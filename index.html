@@ -170,6 +170,7 @@ button.al{width:100%;text-align:left}
 #plmenu button small{color:#0f766e;font-weight:600}#plmenu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
 #lenpad{position:absolute;right:10px;bottom:10px;z-index:6;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--sh);padding:8px;width:162px;animation:rise .2s ease}
 #lenpad.hidden{display:none}
+.lp-tw{width:100%;margin:6px 0 2px;font-size:12.5px;padding:7px 4px}.lp-tw.on{background:var(--acc,#2563eb);color:#fff;border-color:transparent}#lenpad.tw .lp-grid button:not(.ok){outline:2px solid #2563eb55}
 #qcard{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(390px,calc(100% - 20px));background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(17,24,39,.14);padding:10px 12px 12px;z-index:8;animation:rise .2s ease}
 #qcard.hidden{display:none}
 .crow.big{padding:12px 10px}.crow.big b{font-size:14.5px}details.more{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}details.more summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--mut);padding:4px 0 8px;list-style:none}details.more summary::before{content:'▸ ';}details.more[open] summary::before{content:'▾ '}
@@ -262,7 +263,7 @@ button.al{width:100%;text-align:left}
     <div id="scale"><span id="scaleTxt">1 m</span><i id="scaleBar"></i></div>
     <div id="qcard" class="hidden"></div>
     <div id="markpad" class="hidden"></div>
-<div id="lenpad" class="hidden"><div class="lp-row"><span>Largo</span><input id="dlen" inputmode="decimal" placeholder="0,00" autocomplete="off"><span>m</span></div><div class="lp-grid" id="lpGrid"></div><div class="lp-help">Escribí el largo y tocá la dirección</div></div>
+<div id="lenpad" class="hidden"><div class="lp-row"><span>Largo</span><input id="dlen" inputmode="decimal" placeholder="0,00" autocomplete="off"><span>m</span></div><button class="btn lp-tw" id="lpTw" type="button">⟂ Hasta el muro</button><div class="lp-grid" id="lpGrid"></div><div class="lp-help">Escribí el largo y tocá la dirección</div></div>
   </main>
   <aside id="rp"><div class="ph"><div class="tabs"><button data-tab="editar" class="on">Editar</button><button data-tab="capas">Capas</button><button data-tab="resumen">Resumen</button></div><button class="x" id="rpX"></button></div><div class="pbody" id="rpBody"></div></aside>
 </div>
@@ -1143,7 +1144,7 @@ function renderDraftBar(){const b=$('#draftbar');let h='';const al=draftAlert();
   else if(tool==='estr'){const s=sub.estr;h=`<span class="msg">${s.k==='wall'?'Tocá un muro para definirlo':s.k==='losa'?'Tocá un ambiente para definir su losa':s.k==='beam'?BEAMS[s.key].n+': tocá el punto de inicio':COLS[s.key].n+': arrastrá o tocá el plano'}</span>`}
   if(h&&!(draft&&draft.pts.length)&&!landAsst)h+=`<button class="btn" data-act="opts">Opciones</button>`;
   b.innerHTML=h;b.classList.toggle('hidden',!h);
-  const pad=$('#lenpad'),show=!!(draft&&draft.pts.length);pad.classList.toggle('hidden',!show);
+  const pad=$('#lenpad'),show=!!(draft&&draft.pts.length);pad.classList.toggle('hidden',!show);if(!show&&lenTW)setTW(false);
   if(show){const ok=pad.querySelector('.ok');ok.disabled=!((draft.kind==='room'||draft.kind==='line'||draft.kind==='stair')&&draft.pts.length>=2);ok.textContent=draft.kind==='stair'?'Guardar':'Listo';ok.style.visibility=draft.kind==='beam'?'hidden':'visible'}}
 
 /* ===================== Acciones ===================== */
@@ -1957,7 +1958,15 @@ $('#plmenu').addEventListener('click',e=>{const b=e.target.closest('button');if(
 const DIRS=[[-1,-1,'↖'],[0,-1,'↑'],[1,-1,'↗'],[-1,0,'←'],[0,0,'✓'],[1,0,'→'],[-1,1,'↙'],[0,1,'↓'],[1,1,'↘']];
 $('#lpGrid').innerHTML=DIRS.map(([x,y,t])=>`<button data-dx="${x}" data-dy="${y}" class="${!x&&!y?'ok':''}">${!x&&!y?'Listo':t}</button>`).join('');
 $('#lpGrid').addEventListener('pointerdown',e=>{if(e.target.closest('button'))e.preventDefault()});
+let lenTW=false;function setTW(on){lenTW=on;$('#lpTw').classList.toggle('on',on);$('#lenpad').classList.toggle('tw',on);$('#lpTw').textContent=on?'⟂ Tocá una flecha':'⟂ Hasta el muro'}
+$('#lpTw').addEventListener('click',()=>{if(!draft)return;setTW(!lenTW)});
+// desde el último punto, en la dirección elegida, hasta el eje del primer muro con el que choca
+function rayWall(p,dx,dy){const k=Math.hypot(dx,dy);dx/=k;dy/=k;let best=null;for(const r of S.rooms){const n=r.pts.length;for(let i=0;i<segN(r);i++){const a=r.pts[i],b=r.pts[(i+1)%n],e={x:b.x-a.x,y:b.y-a.y},den=dx*e.y-dy*e.x;if(Math.abs(den)<1e-9)continue;
+  const t=((a.x-p.x)*e.y-(a.y-p.y)*e.x)/den,u=((a.x-p.x)*dy-(a.y-p.y)*dx)/den;if(t>2&&u>=-.002&&u<=1.002&&(!best||t<best.t))best={t,q:{x:r1(p.x+dx*t),y:r1(p.y+dy*t)}}}}return best}
 $('#lpGrid').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!draft)return;const dx=+b.dataset.dx,dy=+b.dataset.dy;
+  if(lenTW&&(dx||dy)){setTW(false);const last=draft.pts[draft.pts.length-1],h=rayWall(last,dx,dy);if(!h){toast('En esa dirección no hay ningún muro');return}
+    let q=h.q;if(draft.kind==='stair'){const k=Math.hypot(dx,dy);q={x:r1(q.x-dx/k*(S.meta.wallDef||15)/2),y:r1(q.y-dy/k*(S.meta.wallDef||15)/2)}}
+    $('#dlen').value='';addDraftPoint(q,true);toast('Hasta el muro: '+fm(h.t));const sx=view.x+q.x*view.s,sy=view.y+q.y*view.s;if(sx<40||sy<70||sx>W-40||sy>H-60){view.x=W/2-q.x*view.s;view.y=H/2-q.y*view.s;render();renderOverlay()}return}
   if(!dx&&!dy){if(draft.kind==='room'&&draft.pts.length>=3)closeRoom();else if(draft.kind==='room'&&draft.pts.length===2)finishOpenWall();else if(draft.kind==='line'&&draft.pts.length>=2)finishLine();else if(draft.kind==='stair'&&draft.pts.length>=2)finishStairPath();else toast('Faltan puntos');return}addByLen(dx,dy)});
 $('#dlen').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();if(!draft)return;const last=draft.pts[draft.pts.length-1];
   if(cursor&&dist(cursor,last)>1){const a=Math.round(Math.atan2(cursor.y-last.y,cursor.x-last.x)/(Math.PI/4))*Math.PI/4;addByLen(Math.round(Math.cos(a)),Math.round(Math.sin(a)))}else toast('Tocá una flecha para elegir la dirección')});
