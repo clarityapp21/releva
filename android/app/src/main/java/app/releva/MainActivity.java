@@ -244,6 +244,57 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Igual que shareFile pero para archivos binarios (PDF), que llegan en base64. */
+        @JavascriptInterface
+        public void shareBase64(String b64, String name, String mime) {
+            runOnUiThread(() -> {
+                try {
+                    File dir = new File(getCacheDir(), "share");
+                    if (!dir.exists()) dir.mkdirs();
+                    File f = new File(dir, safeName(name));
+                    try (FileOutputStream os = new FileOutputStream(f)) { os.write(android.util.Base64.decode(b64, android.util.Base64.DEFAULT)); }
+                    Uri u = androidx.core.content.FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".files", f);
+                    Intent i = new Intent(Intent.ACTION_SEND);
+                    i.setType(mime == null || mime.isEmpty() ? "application/pdf" : mime);
+                    i.putExtra(Intent.EXTRA_STREAM, u);
+                    i.putExtra(Intent.EXTRA_SUBJECT, f.getName());
+                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(Intent.createChooser(i, "Compartir"));
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "No se pudo compartir", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public boolean saveBase64(String b64, String name, String mime) {
+            try {
+                String n = safeName(name);
+                byte[] data = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.MediaColumns.DISPLAY_NAME, n);
+                    cv.put(MediaStore.MediaColumns.MIME_TYPE, mime == null || mime.isEmpty() ? "application/pdf" : mime);
+                    cv.put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/Releva");
+                    Uri u = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (u == null) return false;
+                    try (OutputStream os = getContentResolver().openOutputStream(u)) {
+                        if (os == null) return false;
+                        os.write(data);
+                    }
+                    return true;
+                } else {
+                    File dir = getExternalFilesDir("Releva");
+                    if (dir == null) return false;
+                    if (!dir.exists()) dir.mkdirs();
+                    try (FileOutputStream os = new FileOutputStream(new File(dir, n))) { os.write(data); }
+                    return true;
+                }
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
         @JavascriptInterface
         public void vibrate(int ms) {
             try {

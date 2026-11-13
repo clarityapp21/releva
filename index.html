@@ -275,6 +275,7 @@ button.al{width:100%;text-align:left}
 <div id="menu" class="hidden">
   <button data-m="lib">Mis relevamientos</button>
   <button data-m="new">Nuevo relevamiento</button>
+  <button data-m="pdf">Descargar plano en PDF</button>
   <button data-m="exp">Guardar archivo / compartir</button>
   <button data-m="imp">Abrir archivo</button>
   <button data-m="inst" style="display:none">Instalar en este dispositivo</button>
@@ -781,6 +782,10 @@ const SW={
  horno:(c,w)=>`<rect x="-30" y="-28" width="60" height="56" fill="#fff" stroke="${c}" stroke-width="${w}"/><rect x="-22" y="-14" width="44" height="34" rx="3" fill="none" stroke="${c}" stroke-width="${w*.7}"/><path d="M-18-21h36" stroke="${c}" stroke-width="${w*.7}"/>`,
  caldera:(c,w)=>`<rect x="-22" y="-18" width="44" height="36" fill="#fff" stroke="${c}" stroke-width="${w}"/><text text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="600" fill="${c}">CA</text>`,
  campana:(c,w)=>`<rect x="-30" y="-25" width="60" height="50" fill="none" stroke="${c}" stroke-width="${w}" stroke-dasharray="${w*4} ${w*2.5}"/><rect x="-10" y="-8" width="20" height="16" fill="none" stroke="${c}" stroke-width="${w}"/><path d="M-30-25L-10-8M30-25L10-8M-30 25L-10 8M30 25L10 8" stroke="${c}" stroke-width="${w*.7}" stroke-dasharray="${w*4} ${w*2.5}"/>`};
+const PTS=()=>S.meta.artPts!==false;
+const REFP={elec:'E',sanit:'S',gas:'G'};
+function refCode(it){const P=REFP[it.cat]||'X';let n=0;for(const x of S.items){if(x.cat===it.cat)n++;if(x===it)break}return P+n}
+const ptGlyph=c=>`<circle r="5.5" fill="#fff" stroke="${c}" stroke-width="2"/><circle r="2.2" fill="${c}"/>`;
 const _iw=(cat,kind)=>!!(ITEMS[cat]&&ITEMS[cat].kinds[kind]&&ITEMS[cat].kinds[kind].w);
 function itemPreview(cat,kind){const c=ITEMS[cat].c,K=ITEMS[cat].kinds[kind];if(K.w){const s=13/K.w;return `<svg viewBox="-20 -15 40 30"><g transform="scale(${s})">${SW[kind](c,1.3/s)}</g></svg>`}return `<svg viewBox="-20 -15 40 30"><g transform="scale(1.5)">${SS[kind](c)}</g></svg>`}
 function openPreview(k){const P=OPEN[k];
@@ -959,14 +964,14 @@ function render(){LB=[];
       LBadd(m.x,m.y,txt.length*5.4+10,16,isS?90:35,`<g transform="translate(${m.x} ${m.y})"><rect x="${-w/2}" y="${px(-8)}" width="${w}" height="${px(16)}" rx="${px(3)}" fill="#fff" stroke="${T.c}" stroke-width="${px(.8)}"/><text text-anchor="middle" dominant-baseline="central" font-size="${px(9)}" font-weight="600" fill="${T.c}">${txt}</text></g>`)}
     h+=`<g class="${newIds.has(L.id)?'fadein':''}"${op(T.layer)}>${g}</g>`}
   // elementos
-  for(const it of S.items){const C=ITEMS[it.cat];if(!C||!layers[C.layer])continue;const K=C.kinds[it.kind];if(!K)continue;const isS=sel&&sel.t==='item'&&sel.id===it.id,lift=isS&&gesture&&gesture.mode==='drag';
+  for(const it of S.items){const C=ITEMS[it.cat];if(!C||!layers[C.layer])continue;const K0=C.kinds[it.kind];if(!K0)continue;const K=Object.assign({},K0,{w:K0.w&&!PTS()?K0.w:0}),isS=sel&&sel.t==='item'&&sel.id===it.id,lift=isS&&gesture&&gesture.mode==='drag';
     let g='';if(K.w){g+=`<g transform="translate(${it.x} ${it.y}) rotate(${it.rot||0})"><g class="${newIds.has(it.id)?'pop':''}">`;if(isS)g+=`<circle r="${K.w+px(6)}" fill="${ACC}" fill-opacity=".1" stroke="${ACC}" stroke-width="${px(1.5)}"/>`;g+=SW[it.kind](C.c,px(1.2))+'</g></g>'}
-    else{g+=`<g transform="translate(${it.x} ${it.y}) scale(${(lift?1.25:1)/s})"><g class="${newIds.has(it.id)?'pop':''}">`;if(isS)g+=`<circle r="11" fill="${ACC}" fill-opacity=".12" stroke="${ACC}" stroke-width="1.3"/>`;g+=SS[it.kind](C.c)+'</g></g>'}
+    else{g+=`<g transform="translate(${it.x} ${it.y}) scale(${(lift?1.25:1)/s})"><g class="${newIds.has(it.id)?'pop':''}">`;if(isS)g+=`<circle r="11" fill="${ACC}" fill-opacity=".12" stroke="${ACC}" stroke-width="1.3"/>`;g+=(SS[it.kind]&&!K0.w?SS[it.kind](C.c):ptGlyph(C.c))+'</g></g>';if(K0.w&&PTS()&&layers.etiquetas!==false&&!dense){const t=refCode(it),tx=it.x+px(13),ty=it.y-px(9);LBadd(tx,ty,t.length*6+4,11,30,`<text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="central" font-size="${px(8.5)}" font-weight="700" fill="${C.c}" stroke="#fbfbfa" stroke-width="${px(2.5)}" paint-order="stroke">${t}</text>`)}}
     {const ci=circOf(it);if(ci&&layers.etiquetas&&!dense&&labelLayer()('elec')){const tx=it.x+(K.w?K.w*.7:px(15)),ty=it.y+(K.w?0:px(10)),t=ci+(it.cn||'');LBadd(tx,ty,t.length*5.2+4,10,25,`<text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="central" font-size="${px(7.5)}" font-weight="700" letter-spacing="${px(.3)}" fill="${CIRC[ci]}" stroke="#fbfbfa" stroke-width="${px(2.5)}" paint-order="stroke">${t}</text>`)}}
     if(it.estado==='malo'||it.estado==='regular')g+=`<circle cx="${it.x+px(K.w?0:7)+(K.w?K.w*.7:0)}" cy="${it.y-px(K.w?0:7)-(K.w?K.w*.7:0)}" r="${px(2.8)}" fill="${it.estado==='malo'?'#dc2626':'#d97706'}" stroke="#fff" stroke-width="${px(1)}"/>`;
     h+=`<g${op(C.layer)}>${g}</g>`}
   // alertas
-  const obst=[];for(const it of S.items){const C=ITEMS[it.cat];if(!C||!layers[C.layer])continue;const K=C.kinds[it.kind]||{};const r=K.w?K.w*s:9;obst.push({x1:view.x+it.x*s-r,y1:view.y+it.y*s-r,x2:view.x+it.x*s+r,y2:view.y+it.y*s+r})}
+  const obst=[];for(const it of S.items){const C=ITEMS[it.cat];if(!C||!layers[C.layer])continue;const K=C.kinds[it.kind]||{};const r=K.w&&!PTS()?K.w*s:9;obst.push({x1:view.x+it.x*s-r,y1:view.y+it.y*s-r,x2:view.x+it.x*s+r,y2:view.y+it.y*s+r})}
   const alLayer=a=>{const R=a.ref||{};if(R.t==='line'){const L=S.lines.find(x=>x.id===R.id);return L?LINES[L.type].layer:'muros'}if(R.t==='item'){const it=S.items.find(x=>x.id===R.id);return it?ITEMS[it.cat].layer:'muros'}return(R.t==='col'||R.t==='beam'||R.t==='wall')?'estr':'muros'};
   const alShow=a=>{const f=FOCUS[tool];if(tool==='select')return true;if(f)return f.includes(alLayer(a));return alLayer(a)==='muros'};
   const ALS=layers.alertas?allAlerts().filter(alShow):[];for(const a of ALS)obst.push({x1:view.x+(a.x+px(9))*s-8,y1:view.y+(a.y-px(9))*s-8,x2:view.x+(a.x+px(9))*s+8,y2:view.y+(a.y-px(9))*s+8});
@@ -1064,7 +1069,7 @@ function renderOverlay(){let h='';
   if(dropPrev){const d=dropPrev,w=d.w;
     if(d.k==='open'){const nw=nearestWall(w,px(60),edgeOk(d.key)),P=OPEN[d.key];if(nw&&nw.L>=P.w){const a=nw.r.pts[nw.i],b=nw.r.pts[(nw.i+1)%nw.r.pts.length],u={x:(b.x-a.x)/nw.L,y:(b.y-a.y)/nw.L},pos=clamp(r5(nw.pos),P.w/2,nw.L-P.w/2),c={x:a.x+u.x*pos,y:a.y+u.y*pos};
       h+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${ACC}" stroke-opacity=".35" stroke-width="${wallThick(nw.r,nw.i)+px(4)}"/><line x1="${c.x-u.x*P.w/2}" y1="${c.y-u.y*P.w/2}" x2="${c.x+u.x*P.w/2}" y2="${c.y+u.y*P.w/2}" stroke="${ACC}" stroke-width="${wallThick(nw.r,nw.i)+px(2)}"/>`}}
-    else if(d.k==='item'){const C=ITEMS[d.cat],K=C.kinds[d.key],p={x:r5(w.x),y:r5(w.y)};h+=K.w?`<g transform="translate(${p.x} ${p.y})" opacity=".7">${SW[d.key](ACC,px(1.4))}</g>`:`<g transform="translate(${p.x} ${p.y}) scale(${1.3/view.s})" opacity=".85">${SS[d.key](ACC)}</g>`}
+    else if(d.k==='item'){const C=ITEMS[d.cat],K=C.kinds[d.key],p={x:r5(w.x),y:r5(w.y)};h+=K.w&&!PTS()?`<g transform="translate(${p.x} ${p.y})" opacity=".7">${SW[d.key](ACC,px(1.4))}</g>`:`<g transform="translate(${p.x} ${p.y}) scale(${1.3/view.s})" opacity=".85">${SS[d.key]&&!K.w?SS[d.key](ACC):ptGlyph(ACC)}</g>`}
     else if(d.k==='stair'){const T=STAIRS[d.key],L=d.key==='rampa'?T.largo:d.key==='caracol'?T.ancho:T.cnt*T.ped;h+=`<rect x="${r5(w.x)-L/2}" y="${r5(w.y)-T.ancho/2}" width="${L}" height="${T.ancho}" fill="${ACC}" fill-opacity=".15" stroke="${ACC}" stroke-width="${px(1.5)}"/>`}
     else if(d.k==='col'){const C=COLS[d.key],p=colSnap(w);h+=`<rect x="${p.x-C.b/2}" y="${p.y-C.h/2}" width="${C.b}" height="${C.h}" fill="${ACC}" fill-opacity=".3" stroke="${ACC}" stroke-width="${px(1.5)}"/>`}}
   gO.innerHTML=h}
@@ -1124,7 +1129,7 @@ function setSubFrom(el){const k=el.dataset.k,key=el.dataset.key;if(draft)cancelD
   if(k==='stfrom'){S.meta.stairFrom=key;commit();renderLeft();return}if(k==='stturn'){S.meta.stairTurn=key;commit();renderLeft();return}if(k==='room'){sub.room=key;perpA=null}else if(k==='lines')sub.lines=key;else if(k==='floor')sub.floor=key;else if(k==='stair'||k==='stairmode'){sub.stairs=key}else if(k==='open')sub.open=key;else if(k==='item')sub[el.dataset.cat]={k:'item',key};else if(k==='line')sub[tool]={k:'line',key};
   else if(k==='wall'||k==='losa')sub.estr={k,key:null};else if(k==='col'||k==='beam')sub.estr={k,key};
   renderLeft();renderDraftBar();render()}
-function setTool(id){perpA=null;meas.pts=[];isMouseHover=false;if(landAsst)landAsst=null;if(draft)cancelDraft(true);if(id!=='select'&&msel.length){msel=[]}if(markAsst){markAsst=null;renderMarkPad()}if(joinAsst){joinAsst=null;renderJoinPad()}const same=tool===id;tool=id;renderRail();renderLeft();renderAll();
+function setTool(id){perpA=null;{const LL={elec:['elec','cables'],sanit:['sanit','fria','caliente','desague'],gas:['gas'],estr:['estr','fund']}[id];if(LL&&LL.some(l=>layers[l]===false)){LL.forEach(l=>layers[l]=true);save();setTimeout(()=>toast('Capa de '+({elec:'eléctrica',sanit:'sanitaria',gas:'gas',estr:'estructura'}[id])+' activada'),50)}}meas.pts=[];isMouseHover=false;if(landAsst)landAsst=null;if(draft)cancelDraft(true);if(id!=='select'&&msel.length){msel=[]}if(markAsst){markAsst=null;renderMarkPad()}if(joinAsst){joinAsst=null;renderJoinPad()}const same=tool===id;tool=id;renderRail();renderLeft();renderAll();
   const needs=['open','elec','sanit','gas'].includes(id);document.body.classList.toggle('lp-open',same?!document.body.classList.contains('lp-open'):needs);document.body.classList.remove('rp-open');hideQC()}
 function renderDraftBar(){const b=$('#draftbar');let h='';const al=draftAlert();
   if(draft&&draft.pts.length){const n=draft.pts.length,last=draft.pts[n-1],L=cursor?dist(last,cursor):0;
@@ -1207,7 +1212,7 @@ function mselSVG(){let g='';const c=ACC,sw=px(2);for(const m of msel){const o=mO
   else if(m.t==='line'||m.t==='beam')g+=`<polyline points="${o.pts.map(p=>p.x+','+p.y).join(' ')}" fill="none" stroke="${c}" stroke-opacity=".45" stroke-width="${px(8)}" stroke-linecap="round" stroke-linejoin="round"/>`;
   else if(m.t==='stair')g+=stairPolys(o).map(P=>`<polygon points="${P.map(q=>q.x+','+q.y).join(' ')}" fill="${c}" fill-opacity=".12" stroke="${c}" stroke-width="${sw}"/>`).join('');
   else if(m.t==='col')g+=`<rect x="${o.x-o.b/2-px(4)}" y="${o.y-o.h/2-px(4)}" width="${o.b+px(8)}" height="${o.h+px(8)}" fill="none" stroke="${c}" stroke-width="${sw}"/>`;
-  else{const K=ITEMS[o.cat].kinds[o.kind],r=K&&K.w?K.w*.7:px(13);g+=`<circle cx="${o.x}" cy="${o.y}" r="${r}" fill="${c}" fill-opacity=".1" stroke="${c}" stroke-width="${sw}"/>`}}return g}
+  else{const K=ITEMS[o.cat].kinds[o.kind],r=K&&K.w&&!PTS()?K.w*.7:px(13);g+=`<circle cx="${o.x}" cy="${o.y}" r="${r}" fill="${c}" fill-opacity=".1" stroke="${c}" stroke-width="${sw}"/>`}}return g}
 function mOrig(){return msel.map(m=>{const o=mObj(m);if(!o)return null;return{o,pts:o.pts?o.pts.map(p=>({x:p.x,y:p.y})):null,path:o.path?o.path.map(p=>({x:p.x,y:p.y})):null,x:o.x,y:o.y}}).filter(Boolean)}
 function mMove(orig,d){for(const q of orig){const o=q.o;if(q.pts)o.pts=q.pts.map(p=>({x:p.x+d.x,y:p.y+d.y}));if(q.path)o.path=q.path.map(p=>({x:p.x+d.x,y:p.y+d.y}));if(q.x!=null&&!q.pts){o.x=q.x+d.x;o.y=q.y+d.y}}}
 function mDelete(){const ids=new Set(msel.map(m=>m.id)),rooms=new Set(msel.filter(m=>m.t==='room').map(m=>m.id)),n=msel.length;
@@ -1291,7 +1296,7 @@ function hitTest(w,scope){
   const o=selObj();if(o&&(sel.t==='room'||sel.t==='line'||sel.t==='beam'))for(let i=0;i<o.pts.length;i++)if(dist(w,o.pts[i])<px(13))return{t:sel.t==='room'?'rvert':sel.t==='line'?'lvert':'bvert',id:o.id,i};
   if(scope!=='walls'&&scope!=='rooms'||true){
     if(scope==='all')for(const m of markers)if(dist(w,m)<px(9))return{t:'alert',ref:m.a.ref};
-    for(let k=S.items.length-1;k>=0;k--){const it=S.items[k];if(!layers[ITEMS[it.cat].layer])continue;const K=ITEMS[it.cat].kinds[it.kind];if(dist(w,it)<(K&&K.w?Math.max(K.w*.85,px(10)):px(11)))return{t:'item',id:it.id}}
+    for(let k=S.items.length-1;k>=0;k--){const it=S.items[k];if(!layers[ITEMS[it.cat].layer])continue;const K=ITEMS[it.cat].kinds[it.kind];if(dist(w,it)<(K&&K.w&&!PTS()?Math.max(K.w*.85,px(10)):px(coarse()?14:11)))return{t:'item',id:it.id}}
     for(let k=S.cols.length-1;k>=0;k--){const c=S.cols[k];if(!(colFund(c)?layers.fund:layers.estr))continue;if(Math.abs(w.x-c.x)<Math.max(c.b/2,px(8))+px(3)&&Math.abs(w.y-c.y)<Math.max(c.h/2,px(8))+px(3))return{t:'col',id:c.id}}
     if(layers.aberturas&&layers.muros)for(const op of S.openings){const g=openingGeom(op);if(!g)continue;const a={x:g.c.x-g.u.x*g.w/2,y:g.c.y-g.u.y*g.w/2},b={x:g.c.x+g.u.x*g.w/2,y:g.c.y+g.u.y*g.w/2};if(segDist(w,a,b).d<g.t/2+px(6))return{t:'opening',id:op.id}}
     if(layers.muros)for(const m of S.marks)if(dist(w,m)<px(11))return{t:'mark',id:m.id};
@@ -1666,7 +1671,7 @@ function panelEditar(){const o=selObj();
 const bboxMin=r=>{const b=bboxRoom(r);return Math.min(b.w,b.h)};
 function countLayer(k){if(k==='muros')return S.rooms.length;if(k==='aberturas')return S.openings.length;if(k==='estr')return S.cols.length+S.beams.length;if(k==='alertas')return allAlerts().length;if(k==='cotas'||k==='grilla')return '';
   return S.items.filter(i=>ITEMS[i.cat].layer===k).length+S.lines.filter(l=>LINES[l.type].layer===k).length}
-function panelCapas(){return `<div class="qp"><button class="btn" data-act="lp" data-v="all">Todo</button><button class="btn" data-act="lp" data-v="arq">Arquitectura</button><button class="btn" data-act="lp" data-v="elec">Eléctrica</button><button class="btn" data-act="lp" data-v="agua">Sanitaria</button><button class="btn" data-act="lp" data-v="gas">Gas</button><button class="btn" data-act="lp" data-v="estr">Estructura</button></div>
+function panelCapas(){return `<div class="sub2">Artefactos (sanitarios y gas)</div><div class="seg" style="margin-bottom:10px"><button class="${PTS()?'on':''}" data-act="artpts" data-v="1">Puntos con referencia</button><button class="${PTS()?'':'on'}" data-act="artpts" data-v="0">Dibujo a escala</button></div><div class="qp"><button class="btn" data-act="lp" data-v="all">Todo</button><button class="btn" data-act="lp" data-v="arq">Arquitectura</button><button class="btn" data-act="lp" data-v="elec">Eléctrica</button><button class="btn" data-act="lp" data-v="agua">Sanitaria</button><button class="btn" data-act="lp" data-v="gas">Gas</button><button class="btn" data-act="lp" data-v="estr">Estructura</button></div>
   ${LAYERS.map(([k,n,c])=>`<div class="layer" data-act="layer" data-v="${k}"><span class="sw" style="border-color:${c}"></span><span class="ln">${n}</span><span class="cnt">${countLayer(k)}</span><span class="tg ${layers[k]?'on':''}"></span></div>`).join('')}`}
 function summary(){const cov={cubierta:0,semicubierta:0,descubierta:0};S.rooms.forEach(r=>{if(!r.open)cov[r.cover||'cubierta']+=Math.abs(area(r.pts))});
   const cnt={};S.items.forEach(i=>{cnt[i.cat]=cnt[i.cat]||{};cnt[i.cat][i.kind]=(cnt[i.cat][i.kind]||0)+1});
@@ -1745,6 +1750,7 @@ rpb.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)re
   else if(a==='gowall'&&o){sel={t:'wall',id:o.id,i:+v};layers.estr=true;render();renderRight()}
   else if(a==='goroom'&&o){sel={t:'room',id:o.id};render();renderRight()}
   else if(a==='layer'){layers[v]=!layers[v];save();if(sel&&!selObj())sel=null;render();renderRight()}
+  else if(a==='artpts'){S.meta.artPts=v==='1';commit();render();renderRight();return}
   else if(a==='lp'){const base=['muros','cotas','aberturas','grilla','alertas'],m={all:LAYERS.map(l=>l[0]),arq:base,elec:[...base,'elec','cables'],agua:[...base,'sanit','fria','caliente','desague'],gas:[...base,'gas'],estr:['muros','cotas','grilla','alertas','estr']};
     LAYERS.forEach(([k])=>layers[k]=m[v].includes(k));save();render();renderRight()}
   else if(a==='goto'){const s=summary(),list=[...s.alerts.filter(x=>x.sev==='err'),...s.alerts.filter(x=>x.sev==='warn')],al=list[+v];if(al){sel=al.ref;tab='editar';centerOn(al);render();renderRight()}}
@@ -1779,6 +1785,7 @@ $('#menu').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(
   else if(m==='sol')solDlg();
   else if(m==='inst'){if(instEv){instEv.prompt();instEv=null}}
   else if(m==='lib')libDlg();
+  else if(m==='pdf')pdfDlg();
   else if(m==='exp')exportData(S);
   else if(m==='imp')$('#impFile').click();
   else if(m==='new')newProject();
@@ -1973,6 +1980,85 @@ $('#dlen').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDef
 function addByLen(dx,dy){const inp=$('#dlen'),v=pm(inp.value);if(!v||v<=0){toast('Escribí el largo en metros');inp.focus();return}
   const L=v*100,k=Math.hypot(dx,dy),last=draft.pts[draft.pts.length-1],p={x:Math.round((last.x+dx/k*L)*10)/10,y:Math.round((last.y+dy/k*L)*10)/10};
   inp.value='';addDraftPoint(p,true);const sx=view.x+p.x*view.s,sy=view.y+p.y*view.s;if(sx<40||sy<70||sx>W-40||sy>H-60){view.x=W/2-p.x*view.s;view.y=H/2-p.y*view.s;render();renderOverlay()}}
+
+/* ===================== Plano en PDF con planilla de referencias ===================== */
+const PDFW=1754,PDFH=1240;// A4 apaisada a 150 ppp
+const PAGES=[
+  {k:'arq',t:'Arquitectura',lay:['muros','aberturas','cotas'],has:()=>S.rooms.length>0},
+  {k:'elec',t:'Instalación eléctrica',lay:['muros','aberturas','elec','cables','etiquetas'],cat:'elec',grp:'elec'},
+  {k:'sanit',t:'Instalación sanitaria',lay:['muros','aberturas','sanit','fria','caliente','desague'],cat:'sanit',grp:'sanit'},
+  {k:'gas',t:'Instalación de gas',lay:['muros','aberturas','gas'],cat:'gas',grp:'gas'},
+  {k:'estr',t:'Estructura',lay:['muros','estr','fund'],estr:1}];
+function pageHas(pg){if(pg.has)return pg.has();if(pg.estr)return S.cols.length+S.beams.length>0;return S.items.some(i=>i.cat===pg.cat)||S.lines.some(l=>LINES[l.type]&&LINES[l.type].grp===pg.grp)}
+function refRows(pg){const R=[];const rn=p=>{const r=roomAt(p);return r?rn2(r):''},rn2=r=>r.name||'';
+  if(pg.cat){S.items.filter(i=>i.cat===pg.cat).forEach(it=>{const K=ITEMS[it.cat].kinds[it.kind]||{};const ci=circOf(it);R.push([refCode(it),K.n+(ci?' · '+ci+(it.cn||''):'')+(K.alt||it.alt?` · h ${nf((it.alt||K.alt)/100)} m`:''),rn(it),(it.nota||'').slice(0,40)])});
+    const T={};S.lines.filter(l=>LINES[l.type]&&LINES[l.type].grp===pg.grp).forEach(l=>{const L=LINES[l.type],k=L.n+' · '+(l.mat||L.mat||'')+' '+(l.d||L.d||'');T[k]=(T[k]||{n:0,len:0,c:L.c});T[k].n++;T[k].len+=plen(l.pts)+(l.vert||0)});
+    Object.entries(T).forEach(([k,v])=>R.push(['—',k,v.n+' tramo'+(v.n>1?'s':''),fm(v.len),v.c]))}
+  if(pg.estr){S.cols.forEach(c=>R.push([labelOf('col',c),(COLS[c.tipo]||{n:c.tipo}).n+` · ${c.b}×${c.h}`,rn(c),(c.nota||'').slice(0,40)]));S.beams.forEach(v=>R.push([labelOf('beam',v),(BEAMS[v.tipo]||{n:v.tipo}).n+` · ${v.b}×${v.h} · L ${fm(plen(v.pts))}`,'',(v.nota||'').slice(0,40)]))}
+  if(pg.k==='arq'){S.rooms.filter(r=>!r.open).forEach(r=>R.push([r.name||'—',r.nowall?(r.cover==='descubierta'?'Piso descubierto':'Cubierto sin muros'):'Ambiente',fm2(Math.abs(area(r.pts))),r.nivel?('NPT '+fNiv(r.nivel)):'']))}
+  return R}
+// dibuja la planta actual con las capas elegidas como imagen
+function planImage(pg,w,h){return new Promise(res=>{const keep={view:{...view},layers:{...layers},tool,sel,msel,qcOn};
+  try{const b=bbox();if(!b){res(null);return}const pad=60,bw=Math.max(100,b.x2-b.x1),bh=Math.max(100,b.y2-b.y1),s=Math.min((w-2*pad)/bw,(h-2*pad)/bh);
+    view={x:w/2-(b.x1+bw/2)*s,y:h/2-(b.y1+bh/2)*s,s};Object.keys(layers).forEach(k=>layers[k]=false);pg.lay.forEach(k=>layers[k]=true);tool='select';sel=null;msel=[];
+    render();let inner=gW.innerHTML,defs=$('#defs').innerHTML;
+    // números de referencia junto a cada elemento
+    if(pg.cat)S.items.filter(i=>i.cat===pg.cat).forEach(it=>{const C=ITEMS[it.cat];inner+=`<text x="${it.x+13/s}" y="${it.y+14/s}" font-size="${10/s}" font-weight="700" fill="${C.c}" stroke="#fff" stroke-width="${3/s}" paint-order="stroke">${refCode(it)}</text>`});
+    const cs=getComputedStyle(document.documentElement);const fix=t=>t.replace(/var\(--([\w-]+)\)/g,(m,n)=>cs.getPropertyValue('--'+n).trim()||'#374151').replace(/url\(#gMa\)/g,'none');
+    const str=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="Inter, Arial, sans-serif"><rect width="${w}" height="${h}" fill="#fff"/><defs>${fix(defs)}</defs><g transform="translate(${view.x} ${view.y}) scale(${s})">${fix(inner)}</g></svg>`;
+    const img=new Image();img.onload=()=>res({img,s});img.onerror=()=>res(null);img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(str)}
+  catch(e){console.error(e);res(null)}
+  finally{view=keep.view;Object.assign(layers,keep.layers);tool=keep.tool;sel=keep.sel;msel=keep.msel;render()}})}
+async function buildPages(opts){const out=[],cp=curP(),pls=opts.all?S.plantas:[cp],date=new Date().toLocaleDateString('es-AR');
+  for(const pl of pls){if(pl!==curP())goPlanta(pl.id);
+    for(const pg of PAGES){if(!opts.pages.includes(pg.k)||!pageHas(pg))continue;
+      const cv=document.createElement('canvas');cv.width=PDFW;cv.height=PDFH;const c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,PDFW,PDFH);
+      const rows=refRows(pg),legW=rows.length?560:0,planW=PDFW-legW-60,planH=PDFH-190;
+      const pi=await planImage(pg,planW,planH);if(pi)c.drawImage(pi.img,30,120);
+      // encabezado
+      c.fillStyle='#111827';c.font='700 34px Inter, Arial, sans-serif';c.fillText(pg.t,40,62);c.font='400 20px Inter, Arial, sans-serif';c.fillStyle='#4b5563';
+      c.fillText([S.meta.name||'Relevamiento',S.meta.addr||'',pl.name+' (NPT '+fNiv(pl.elev)+')',date].filter(Boolean).join('   ·   '),40,96);
+      c.strokeStyle='#111827';c.lineWidth=2;c.beginPath();c.moveTo(40,108);c.lineTo(PDFW-40,108);c.stroke();
+      // escala gráfica
+      if(pi){const m1=100*pi.s;let L=1;for(const v of[1,2,5,10]){if(v*m1<=260)L=v}const x=50,y=PDFH-50;c.fillStyle='#111827';c.fillRect(x,y,L*m1,6);c.fillStyle='#fff';for(let k=0;k<L;k+=2)c.fillRect(x+k*m1+1,y+1,m1-2,4);c.fillStyle='#111827';c.font='600 16px Inter, Arial, sans-serif';c.fillText('0',x-4,y-8);c.fillText(L+' m',x+L*m1-10,y-8)}
+      // norte
+      if(layers.sol!==false&&S.meta.sol){const nb=(S.meta.sol.norte||0)*Math.PI/180,cx=PDFW-legW-90,cy=170;c.save();c.translate(cx,cy);c.rotate(nb);c.fillStyle='#111827';c.beginPath();c.moveTo(0,-34);c.lineTo(9,0);c.lineTo(-9,0);c.fill();c.font='800 18px Arial';c.fillText('N',-6,-40);c.restore()}
+      // planilla de referencias
+      if(rows.length){const x0=PDFW-legW-30,y0=130;c.fillStyle='#f3f4f6';c.fillRect(x0,y0,legW,44);c.fillStyle='#111827';c.font='700 19px Inter, Arial, sans-serif';c.fillText(pg.k==='arq'?'Ambientes':'Referencias',x0+14,y0+29);
+        let y=y0+70;c.font='600 14px Inter, Arial, sans-serif';c.fillStyle='#6b7280';const head=pg.k==='arq'?['Nombre','Tipo','Superficie','Nivel']:['Ref.','Elemento','Ambiente / cant.','Nota / largo'];const cx=[x0+12,x0+90,x0+330,x0+450];head.forEach((t,i)=>c.fillText(t,cx[i],y));y+=10;
+        c.strokeStyle='#d1d5db';c.lineWidth=1;c.beginPath();c.moveTo(x0,y);c.lineTo(x0+legW,y);c.stroke();y+=22;
+        const clip=(t,wd)=>{t=String(t||'');while(t.length>1&&c.measureText(t).width>wd)t=t.slice(0,-2)+'…';return t};
+        for(const r of rows){if(y>PDFH-40){c.fillStyle='#6b7280';c.font='italic 14px Arial';c.fillText('(continúa en la otra página)',x0+12,y);break}
+          c.font='700 15px Inter, Arial, sans-serif';c.fillStyle=r[4]||(ITEMS[pg.cat]?ITEMS[pg.cat].c:'#111827');c.fillText(clip(r[0],74),cx[0],y);c.font='400 15px Inter, Arial, sans-serif';c.fillStyle='#111827';c.fillText(clip(r[1],232),cx[1],y);c.fillStyle='#4b5563';c.fillText(clip(r[2],112),cx[2],y);c.fillText(clip(r[3],100),cx[3],y);
+          y+=24;c.strokeStyle='#f1f5f9';c.beginPath();c.moveTo(x0,y-16);c.lineTo(x0+legW,y-16);c.stroke()}
+        c.strokeStyle='#d1d5db';c.strokeRect(x0,y0,legW,Math.min(y,PDFH-30)-y0)}
+      c.fillStyle='#9ca3af';c.font='400 13px Arial';c.fillText('Hecho con Releva',PDFW-170,PDFH-20);
+      out.push(cv.toDataURL('image/jpeg',.9))}}
+  if(curP()!==cp)goPlanta(cp.id);return out}
+function makePDF(jpgs){const enc=new TextEncoder(),parts=[],offs=[];let len=0;const push=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
+  const N=jpgs.length,obj=(n,body)=>{offs[n]=len;push(`${n} 0 obj\n`);body();push('\nendobj\n')};
+  push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+  const kids=[];for(let i=0;i<N;i++)kids.push(`${3+i*3} 0 R`);
+  obj(1,()=>push('<< /Type /Catalog /Pages 2 0 R >>'));obj(2,()=>push(`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${N} >>`));
+  jpgs.forEach((d,i)=>{const bin=atob(d.split(',')[1]),u=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);const P=3+i*3,C=P+1,I=P+2,cs=`q 842 0 0 595 0 0 cm /Im${i} Do Q`;
+    obj(P,()=>push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /XObject << /Im${i} ${I} 0 R >> >> /Contents ${C} 0 R >>`));
+    obj(C,()=>push(`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`));
+    obj(I,()=>{push(`<< /Type /XObject /Subtype /Image /Width ${PDFW} /Height ${PDFH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${u.length} >>\nstream\n`);push(u);push('\nendstream')})});
+  const n=3+N*3,xo=len;let x=`xref\n0 ${n}\n0000000000 65535 f \n`;for(let i=1;i<n;i++)x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';push(x+`trailer\n<< /Size ${n} /Root 1 0 R >>\nstartxref\n${xo}\n%%EOF`);
+  const out=new Uint8Array(len);let o=0;for(const p of parts){out.set(p,o);o+=p.length}return out}
+function pdfDlg(){const av=PAGES.filter(pageHas);if(!av.length){toast('Todavía no hay nada dibujado');return}
+  modal(`<h3>Descargar plano en PDF</h3><p>Una hoja por cada instalación, con su planilla de referencias.</p>
+  <div style="margin:6px 0 10px">${PAGES.map(pg=>`<label class="rb" style="display:flex;gap:8px;align-items:center;padding:6px 0;${pageHas(pg)?'':'opacity:.45'}"><input type="checkbox" data-pg="${pg.k}" ${pageHas(pg)?'checked':'disabled'}> ${pg.t}</label>`).join('')}
+  ${S.plantas.length>1?`<label class="rb" style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);margin-top:4px"><input type="checkbox" id="pdAll" checked> Todas las plantas (${S.plantas.length})</label>`:''}</div>
+  <div class="macts"><button class="btn" data-mx>Cancelar</button><button class="btn pri" id="pdGo">Armar PDF</button></div>`,mm=>{
+    mm.querySelector('#pdGo').onclick=async()=>{const pages=[...mm.querySelectorAll('[data-pg]:checked')].map(x=>x.dataset.pg);if(!pages.length){toast('Elegí al menos una hoja');return}const all=!!(mm.querySelector('#pdAll')&&mm.querySelector('#pdAll').checked);
+      mm.querySelector('#pdGo').textContent='Armando…';mm.querySelector('#pdGo').disabled=true;
+      try{const jp=await buildPages({pages,all});if(!jp.length){toast('No hay hojas con contenido');closeModal();return}const pdf=makePDF(jp);closeModal();savePDF(pdf,fileName(S).replace(/\.releva$/,'')+'-plano.pdf',jp.length)}catch(e){console.error(e);toast('No se pudo armar el PDF');closeModal()}}})}
+function savePDF(u8,name,n){let b='';for(let i=0;i<u8.length;i+=32768)b+=String.fromCharCode.apply(null,u8.subarray(i,i+32768));const b64=btoa(b);
+  if(window.RelevaNative&&RelevaNative.shareBase64){modal(`<h3>PDF listo</h3><p>${esc(name)} · ${n} hoja${n>1?'s':''}</p><div class="macts" style="flex-wrap:wrap"><button class="btn" data-mx>Cerrar</button><button class="btn" id="pfSave">Guardar en Descargas</button><button class="btn pri" id="pfShare">Compartir</button></div>`,mm=>{
+      mm.querySelector('#pfShare').onclick=()=>{closeModal();RelevaNative.shareBase64(b64,name,'application/pdf')};mm.querySelector('#pfSave').onclick=()=>{closeModal();toast(RelevaNative.saveBase64(b64,name,'application/pdf')?'Guardado en Descargas › Releva: '+name:'No se pudo guardar')}});return}
+  const blob=new Blob([u8],{type:'application/pdf'});try{const f=new File([blob],name,{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:name}).catch(()=>{});return}}catch(e){}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast('PDF descargado: '+name)}
 
 /* ===================== Inicio ===================== */
 // app instalable y sin conexión (solo cuando se sirve desde una web, como GitHub Pages)
