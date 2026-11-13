@@ -1099,6 +1099,7 @@ function render(){LB=[];
     if(sel.t==='room')h+=`<${o.open?'polyline':'polygon'} points="${o.pts.map(p=>p.x+','+p.y).join(' ')}" fill="${ACC}" fill-opacity=".05" stroke="${ACC}" stroke-width="${px(1.5)}" stroke-dasharray="${px(6)} ${px(4)}"/>`;
     const act=gesture&&gesture.mode==='drag'&&gesture.hit&&['rvert','lvert','bvert','svert','fvert'].includes(gesture.hit.t)?gesture.hit.i:-1;
     o_pts.forEach((p,k)=>{if(k===act){const P=p;h+=`<g transform="translate(${P.x} ${P.y}) scale(${1/view.s})"><circle r="12" fill="${ACC}" fill-opacity=".16" stroke="${ACC}" stroke-width="1.5"><animate attributeName="r" values="9;15;9" dur="1.4s" repeatCount="indefinite"/></circle><circle r="5" fill="${ACC}" stroke="#fff" stroke-width="2"/></g>`}else h+=`<circle cx="${p.x}" cy="${p.y}" r="${px(5.5)}" fill="#fff" stroke="${ACC}" stroke-width="${px(2)}"/>`})}
+  {const o=selObj();if(o&&sel&&sel.t==='furn'&&RUN(o)&&!(gesture&&gesture.mode==='drag'))for(let i=0;i<o.pts.length-1;i++){const m={x:(o.pts[i].x+o.pts[i+1].x)/2,y:(o.pts[i].y+o.pts[i+1].y)/2};h+=`<g transform="translate(${m.x} ${m.y}) scale(${1/view.s})"><circle r="7" fill="#fff" stroke="${ACC}" stroke-width="1.5" stroke-dasharray="2 1.5"/><path d="M-3.5 0h7M0-3.5v7" stroke="${ACC}" stroke-width="1.5"/></g>`}}
   {const o=selObj();if(o&&sel&&sel.t==='stair'&&o.path)stairWHandles(o).forEach(q=>{h+=`<g transform="translate(${q.x} ${q.y}) rotate(${Math.atan2(q.n.y,q.n.x)/DEG}) scale(${1/view.s})"><rect x="-6" y="-6" width="12" height="12" transform="rotate(45)" fill="#fff" stroke="${ACC}" stroke-width="2"/><path d="M-13 0h-5M13 0h5" stroke="${ACC}" stroke-width="1.6"/></g>`})}
   gW.innerHTML=h;applyT()}
 function openingSVG(o,g){const{w,t,c,ang,sign}=g,isS=sel&&sel.t==='opening'&&sel.id===o.id;let h=`<g transform="translate(${c.x} ${c.y}) rotate(${ang})"><g class="${newIds.has(o.id)?'pop':''}">`;
@@ -1255,6 +1256,7 @@ function renderDraftBar(){const b=$('#draftbar');let h='';const al=draftAlert();
     else if(draft.kind==='furn')h=`<span class="msg"><span style="color:${FURN[draft.type].c}">●</span> ${FURN[draft.type].n} · <span class="live">${fm(plen(draft.pts)+L)}</span> <span class="hide-m">· tocá cada quiebre contra la pared</span></span><button class="btn" data-act="dback">${icon('undo',14)}</button><button class="btn pri" data-act="dok" ${n<2?'disabled':''}>Terminar</button><button class="btn" data-act="dx">${icon('close',14)}</button>`;
     else if(draft.kind==='stair')h=`<span class="msg">Escalera · <span class="live">${fm(plen(draft.pts)+L)}</span> <span class="hide-m">· cada quiebre es un descanso</span></span><button class="btn" data-act="dback">${icon('undo',14)}</button><button class="btn pri" data-act="dok" ${n<2?'disabled':''}>Guardar</button><button class="btn" data-act="dx">${icon('close',14)}</button>`;
     else h=`<span class="msg">${BEAMS[sub.estr.key].n}: tocá el punto final <span class="live">${L>1?'· '+fm(L):''}</span></span><button class="btn" data-act="dx">${icon('close',14)}</button>`}
+  else if(cutAsst)h=`<span class="msg">Tocá la mesada en el punto donde la querés cortar</span><button class="btn" data-act="cutx">Cancelar</button>`;
   else if(landAsst)h=`<span class="msg">Tocá la escalera donde va el descanso <span class="hide-m">(tocá uno recto para quitarlo)</span></span><button class="btn pri" data-act="landok">Listo</button>`;
   else if(tool==='room'&&sub.room==='perp')h=`<span class="msg">${perpA?'Tocá la línea punteada para crear el muro':'Muro perpendicular: tocá un punto de una pared'}</span>${perpA?'<button class="btn" data-act="perpx">Otro punto</button>':''}`;
   else if(tool==='room')h=`<span class="msg">${sub.room==='pts'?'Tocá la primera esquina del ambiente':sub.room==='stair2'?'Escalera: tocá dónde arranca':sub.room==='mark'?'Tocá la pared donde querés marcar el punto':sub.room==='join90'?(!joinAsst?'Tocá el punto A':!joinAsst.b?'Ahora tocá el punto B':'Elegí el codo y tocá Crear muro'):sub.room==='stair'?'Arrastrá o tocá el plano: '+STAIRS[sub.stair].n:'Arrastrá para dibujar un rectángulo'}</span>`;
@@ -1321,7 +1323,8 @@ function runSVG(f,isS){const F=FURN[f.t],c=F.c,P=f.pts;if(P.length<2)return '';c
   else if(!al)g+=`<polygon points="${poly}" fill="#eef2ff" fill-opacity=".55"/>`;
   return g+`<polyline points="${out}" fill="none" stroke="${c}" stroke-width="${px(al?1.2:1.4)}" stroke-linejoin="round" ${al?`stroke-dasharray="${px(6)} ${px(4)}"`:''}/>`}
 // asistencia: rincones, bordes de aberturas, caras de muros; sin limitar el largo
-function runSnap(w,first){const tol=Math.max(12,px(first?30:20)),C=faceCands(w,tol*1.5),V=[];
+function runSnap(w,first,ref){const q=runSnap0(w,first);return q?Object.assign(outOfWalls(q,ref||w),q.k?{k:q.k}:{}):q}
+function runSnap0(w,first){const tol=Math.max(12,px(first?30:20)),C=faceCands(w,tol*1.5),V=[];
   for(let i=0;i<C.length;i++)for(let j=i+1;j<C.length;j++){const A=C[i],B=C[j],cr=A.u.x*B.u.y-A.u.y*B.u.x;if(Math.abs(cr)<.3)continue;const t=((B.fp.x-A.fp.x)*B.u.y-(B.fp.y-A.fp.y)*B.u.x)/cr;V.push({x:A.fp.x+A.u.x*t,y:A.fp.y+A.u.y*t,k:'rincon'})}
   for(const F of C)for(const o of S.openings){if(o.room!==F.r.id||o.seg!==F.i)continue;const g=openingGeom(o);if(!g)continue;for(const e of[-1,1]){const p={x:g.c.x+g.u.x*e*g.w/2+F.n.x*F.t/2,y:g.c.y+g.u.y*e*g.w/2+F.n.y*F.t/2};V.push({...p,k:'abertura_l'})}}
   let best=null;for(const v of V){const d=dist(v,w);if(d<tol*1.3&&(!best||d<best.d))best={...v,d}}if(best){curSnap=best.k;return{x:r1(best.x),y:r1(best.y),k:best.k}}
@@ -1331,6 +1334,16 @@ function runSnap(w,first){const tol=Math.max(12,px(first?30:20)),C=faceCands(w,t
     const dx=w.x-last.x,dy=w.y-last.y;curSnap=null;return Math.abs(dx)>Math.abs(dy)?{x:r1(w.x),y:last.y}:{x:last.x,y:r1(w.y)}}
   if(C.length&&C[0].gap<tol){const F=C[0];curSnap='cara';return{x:r1(F.fp.x),y:r1(F.fp.y),k:'cara'}}
   curSnap=null;return first?null:{x:r1(w.x),y:r1(w.y)}}
+// nunca dentro de un muro: lo saca hacia la cara del lado de ref
+function outOfWalls(p,ref){let q={x:p.x,y:p.y};for(let it=0;it<4;it++){let moved=false;for(const r of S.rooms){const n=r.pts.length;for(let i=0;i<segN(r);i++){const t=wallThick(r,i);if(!t)continue;const a=r.pts[i],b=r.pts[(i+1)%n],L=dist(a,b);if(L<1)continue;const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L},nn={x:-u.y,y:u.x},al=(q.x-a.x)*u.x+(q.y-a.y)*u.y;if(al<-t/2+.5||al>L+t/2-.5)continue;const s=(q.x-a.x)*nn.x+(q.y-a.y)*nn.y;if(Math.abs(s)>=t/2-.3)continue;
+    if(S.openings.some(o=>o.room===r.id&&o.seg===i&&!(o.sill>0)&&Math.abs(al-o.pos)<o.w/2-1))continue;
+    let sg=Math.sign(s)||1;if(ref){const sr=(ref.x-a.x)*nn.x+(ref.y-a.y)*nn.y;if(Math.abs(sr)>t/2)sg=Math.sign(sr)}const k=sg*t/2-s;q={x:q.x+nn.x*k,y:q.y+nn.y*k};moved=true}}if(!moved)break}return{x:r1(q.x),y:r1(q.y)}}
+let cutAsst=null;
+function cutTap(w){const f=S.furn.find(x=>x.id===cutAsst);cutAsst=null;renderDraftBar();if(!f){render();return}const P=f.pts;let bi=-1,bd=Infinity,bt=0;for(let i=0;i<P.length-1;i++){const sd=segDist(w,P[i],P[i+1]);if(sd.d<bd){bd=sd.d;bi=i;bt=sd.t}}
+  if(bd>(f.d||60)+px(25)){toast('Tocá sobre la mesada');return}const L=dist(P[bi],P[bi+1]);let c={x:r1(P[bi].x+(P[bi+1].x-P[bi].x)*bt),y:r1(P[bi].y+(P[bi+1].y-P[bi].y)*bt)};
+  let A,B;if(bt*L<5&&bi>0){A=P.slice(0,bi+1);B=P.slice(bi)}else if((1-bt)*L<5&&bi+1<P.length-1){A=P.slice(0,bi+2);B=P.slice(bi+1)}else{if(bt*L<5||(1-bt)*L<5){toast('Muy cerca de la punta: tocá más adentro');return}A=[...P.slice(0,bi+1),c];B=[c,...P.slice(bi+1)]}
+  f.pts=A.map(q=>({...q}));const g=JSON.parse(JSON.stringify(f));g.id=uid();g.pts=B.map(q=>({...q}));S.furn.push(g);flash(g.id);commit();selectObj({t:'furn',id:f.id},true);render();renderRight();toast(`Cortada en dos: ${fm(plen(A))} + ${fm(plen(B))}`)}
+function runSetSeg(f,i,len){const P=f.pts,a=P[i],b=P[i+1],L=dist(a,b)||1,u={x:(b.x-a.x)/L,y:(b.y-a.y)/L},d=len-L;for(let k=i+1;k<P.length;k++)P[k]={x:r1(P[k].x+u.x*d),y:r1(P[k].y+u.y*d)}}
 function runAutoSide(P){const a=P[0],b=P[1],L=dist(a,b)||1,u={x:(b.x-a.x)/L,y:(b.y-a.y)/L},nl={x:-u.y,y:u.x},m={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
   const F=faceCands(m,3).find(F=>F.gap<3&&Math.abs(F.u.x*u.x+F.u.y*u.y)>.95);if(F)return F.n.x*nl.x+F.n.y*nl.y>0?1:-1;
   const q={x:m.x+nl.x*20,y:m.y+nl.y*20};return S.rooms.some(r=>!r.open&&pip(q,r.pts))?1:-1}
@@ -1493,7 +1506,7 @@ function wallHitInterior(w){if(S.marks.some(m=>dist(m,w)<px(12)))return null;let
 function hitTest(w,scope){
   {const o=selObj();if(o&&sel.t==='stair'&&o.path){for(let i=0;i<o.path.length;i++)if(dist(w,o.path[i])<px(coarse()?17:13))return{t:'svert',id:o.id,i};const H=stairWHandles(o);for(let k=0;k<H.length;k++)if(dist(w,H[k])<px(coarse()?17:13))return{t:'swid',id:o.id,i:k}}}
   {const o=selObj();if(o&&sel.t==='wall'){const n=o.pts.length;for(const k of[sel.i,(sel.i+1)%n])if(dist(w,o.pts[k])<px(coarse()?18:13))return{t:'wvert',id:o.id,i:k}}}
-  {const o=selObj();if(o&&sel.t==='furn'&&(o.t==='mesada'||RUN(o)))for(let i=0;i<o.pts.length;i++)if(dist(w,o.pts[i])<px(13))return{t:'fvert',id:o.id,i}}
+  {const o=selObj();if(o&&sel.t==='furn'&&(o.t==='mesada'||RUN(o))){for(let i=0;i<o.pts.length;i++)if(dist(w,o.pts[i])<px(13))return{t:'fvert',id:o.id,i};if(RUN(o))for(let i=0;i<o.pts.length-1;i++){const m={x:(o.pts[i].x+o.pts[i+1].x)/2,y:(o.pts[i].y+o.pts[i+1].y)/2};if(dist(w,m)<px(12))return{t:'fvert',id:o.id,i:i+1,ins:true}}}}
   const o=selObj();if(o&&(sel.t==='room'||sel.t==='line'||sel.t==='beam'))for(let i=0;i<o.pts.length;i++)if(dist(w,o.pts[i])<px(13))return{t:sel.t==='room'?'rvert':sel.t==='line'?'lvert':'bvert',id:o.id,i};
   if(scope!=='walls'&&scope!=='rooms'||true){
     if(scope==='all')for(const m of markers)if(dist(w,m)<px(9))return{t:'alert',ref:m.a.ref};
@@ -1527,7 +1540,7 @@ svg.addEventListener('pointerdown',e=>{$('#menu').classList.add('hidden');if(mob
   if(ptrs.size>2)return;
   const w=toW(sp);gesture={mode:'pending',sp,w0:w,moved:false,v0:{...view},pt:e.pointerType};
   if(e.button===1||e.button===2){gesture.mode='pan';return}
-  if(draft||landAsst)return;
+  if(draft||landAsst||cutAsst)return;
   if(tool==='room'&&sub.room==='rect'){gesture.mode='rect';gesture.a=snapPt(w,{ortho:false});return}
   if(FRECT()){gesture.mode='frect';gesture.fs=furnStart(w);gesture.b=null;renderOverlay();return}
   if(isDrawTool()||copyPick)return;
@@ -1684,6 +1697,7 @@ function addDraftPoint(p,exact){const kind=drawKind();if(!draft)draft={kind,pts:
 function tap(w,empty){
   if(tool==='measure')return measureTap(w);
   if(landAsst)return landTap(w);
+  if(cutAsst)return cutTap(w);
   if(mWalls()&&tool==='select'){const wh=wallHitInterior(w);if(wh){const k=msel.findIndex(m=>m.id===wh.id&&m.i===wh.i);if(k>=0)msel.splice(k,1);else msel.push({t:'wall',id:wh.id,i:wh.i});renderOverlay();renderQC();return}clearMulti();return}
   if(tool==='name')return nameTap(w);
   if(copyPick)return copyTap(w);
@@ -1719,7 +1733,8 @@ function dragTo(w){const g=gesture,h=g.hit,o=selObj();if(!o)return;g.dragged=tru
   else if(h.t==='stair'){o.x=g.orig.x+d.x;o.y=g.orig.y+d.y}
   else if(h.t==='col'){const p=colSnap({x:g.orig.x+(w.x-g.w0.x),y:g.orig.y+(w.y-g.w0.y)});o.x=p.x;o.y=p.y}
   else if(['room','line','beam','furn'].includes(h.t))o.pts=g.orig.map(p=>({x:p.x+d.x,y:p.y+d.y}));
-  else if(h.t==='fvert'){const q=RUN(o)?runSnap(w,true)||{x:r1(w.x),y:r1(w.y)}:snapPt(w,{ortho:false});o.pts[h.i]={x:q.x,y:q.y}}
+  if(h.t==='furn'&&RUN(o)){let bv={x:0,y:0},bm=0;o.pts.forEach((p,k)=>{const q=outOfWalls(p,g.orig[k]),v={x:q.x-p.x,y:q.y-p.y},mm=Math.hypot(v.x,v.y);if(mm>bm){bm=mm;bv=v}});if(bm>0)o.pts=o.pts.map(p=>({x:r1(p.x+bv.x),y:r1(p.y+bv.y)}))}
+  else if(h.t==='fvert'){if(h.ins){o.pts.splice(h.i,0,{x:r1(w.x),y:r1(w.y)});delete h.ins}const q=RUN(o)?runSnap(w,true)||outOfWalls({x:r1(w.x),y:r1(w.y)},w):snapPt(w,{ortho:false});o.pts[h.i]={x:q.x,y:q.y}}
   else if(h.t==='rvert')o.pts[h.i]=snapPt(w,{ortho:false,exRoom:o.id});
   else if(h.t==='lvert')o.pts[h.i]=snapPt(w,{ortho:false,exLine:o.id,lines:true,items:true});
   else if(h.t==='bvert')o.pts[h.i]=snapPt(w,{ortho:false,cols:true});
@@ -1815,7 +1830,9 @@ function panelEditar(){const o=selObj();
   if(sel.t==='furn'){const F=FURN[o.t]||FURN.mesada,sw=`<svg viewBox="0 0 40 30">${RUN(o)?`<path d="M6 6V24H34" stroke="#3d424a" stroke-width="3" fill="none"/><path d="M8 6V12H14V22H34" stroke="${F.c}" stroke-width="1.5" fill="none" ${o.t==='alacena'?'stroke-dasharray="2.5 2"':''}/>`:o.t==='mesada'?`<path d="M5 22H35" stroke="${F.c}" stroke-width="2"/>`:`<rect x="6" y="8" width="28" height="14" fill="none" stroke="${F.c}" stroke-width="1.6" ${o.t==='alacena'?'stroke-dasharray="3 2"':''}/><path d="M6 8L34 22M34 8L6 22" stroke="${F.c}" stroke-width=".8"/>`}</svg>`;
     if(RUN(o))return head(sw,F.n,fm(plen(o.pts))+(o.pts.length>2?' · en L':''))+`<div class="field"><label>Tipo</label><div class="seg"><button class="${o.t==='mesada'?'on':''}" data-act="ftipo" data-v="mesada">Mesada</button><button class="${o.t==='alacena'?'on':''}" data-act="ftipo" data-v="alacena">Alacena</button></div></div>
       <div class="row2"><div class="field"><label>Fondo (m)</label>${mIn('fdep',o.d)}</div><div class="field"><label>Altura (m)</label>${mIn('falt',o.alt)}</div></div>
-      <div class="kv" style="margin-bottom:8px"><span>Largo por la pared</span><b>${o.pts.slice(1).map((q,i)=>fm(dist(o.pts[i],q))).join(' + ')}</b></div>
+      <div class="field"><label>Largo de cada tramo (m)</label><div style="display:flex;gap:6px;flex-wrap:wrap">${o.pts.slice(1).map((q,i)=>`<input class="inp" data-f="fseg:${i}" inputmode="decimal" value="${nf(dist(o.pts[i],q)/100)}" style="flex:1;min-width:70px">`).join('')}</div></div>
+      <div class="hint" style="margin:-2px 0 8px">Arrastrá los puntos para cambiarla; el punto del medio de cada tramo agrega un quiebre.</div>
+      <button class="btn wide" style="margin-bottom:8px" data-act="fcut">Cortar en un punto</button>
       <button class="btn wide" style="margin-bottom:10px" data-act="fside">Pasar el fondo al otro lado</button>
       <div class="field"><label>Material</label><input class="inp" data-f="mat" list="dlm" value="${esc(o.mat||'')}" placeholder="${o.t==='mesada'?'Ej: granito, mármol, melamina':'Ej: melamina, madera'}"><datalist id="dlm">${['Granito','Mármol','Cuarzo','Melamina','MDF','Madera','Acero inoxidable'].map(m=>`<option value="${m}">`).join('')}</datalist></div>
       ${estadoHTML(o)}${notaHTML(o,o.t==='mesada'?'Bacha, zócalo, bajo mesada…':'Puertas, estantes…')}${delHTML}`;
@@ -1958,6 +1975,7 @@ function applyField(el,fin){const f=el.dataset.f;if(!f)return;const o=selObj();i
   else if(f.startsWith('pt:')){if(!fin)return;const i=+f.slice(3);if(o.parts&&o.parts[i]){o.parts[i].t=v;if((v==='h'||v==='v')&&!o.parts[i].hg)o.parts[i].hg='l'}}
   else if(f.startsWith('pw:')){if(!fin)return;const i=+f.slice(3);if(n==null||n<.1){renderRight();return}if(o.parts&&o.parts[i]){o.parts[i].w=Math.round(n*1000)/10;partsFit(o)}}
   else if(f==='fw'||f==='fd'){if(n==null||n<.1){if(fin)renderRight();return}if(!fin)return;const d=furnDims(o);furnResize(o,f==='fw'?Math.round(n*1000)/10:d.w,f==='fd'?Math.round(n*1000)/10:d.d)}
+  else if(f.startsWith('fseg:')){if(!fin)return;if(n==null||n<.05){renderRight();return}runSetSeg(o,+f.slice(5),Math.round(n*1000)/10)}
   else if(f==='fdep'){if(n==null||n<.05){if(fin)renderRight();return}o.d=Math.round(n*1000)/10;render();if(!fin)return}
   else if(f==='fprof'){if(!num('prof',true,.05)){if(!fin)return}else if(!fin)return}
   else if(f==='falt'){if(!num('alt',true,0)){if(!fin)return}else if(!fin)return}
@@ -1983,6 +2001,7 @@ rpb.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)re
   else if(a==='wnone'&&o){setWs(o,sel.i,{none:v==='1'});commit();render();renderRight()}
   else if(a==='circ'&&o){o.circ=v;commit();render();renderRight()}
   else if(a==='ftipo'&&o){if(RUN(o)&&o.t!==v)o.d=FURN[v].d;if(RUN(o)&&o.alt===FURN[o.t].alt)o.alt=FURN[v].alt;o.t=v;commit();render();renderRight()}
+  else if(a==='fcut'&&o){cutAsst=o.id;hideQC&&hideQC();if(mobile())document.body.classList.remove('rp-open');renderDraftBar();toast('Tocá donde la querés cortar')}
   else if(a==='fside'&&o){o.side=-(o.side||1);commit();render();renderRight()}
   else if(a==='tocomp'&&o){toComp(o);commit();render();renderRight()}
   else if(a==='phg'&&o&&o.parts){const p=o.parts[+b.dataset.i];if(p){p.hg=p.hg==='r'?'l':'r';commit();render();renderRight()}}
@@ -2008,7 +2027,7 @@ document.querySelector('#rp .tabs').addEventListener('click',e=>{const b=e.targe
 
 /* ===================== Controles generales ===================== */
 $('#rail').addEventListener('click',e=>{const b=e.target.closest('[data-tool]');if(b)setTool(b.dataset.tool)});
-$('#draftbar').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&b.dataset.act==='perpx'){perpA=null;renderOverlay();renderDraftBar();return}if(b&&b.dataset.act==='mnew'){meas.pts=[];cursor=null;renderOverlay();renderDraftBar();return}if(b&&b.dataset.act==='landok'){endLand();return}if(b&&b.dataset.act==='opts'){document.body.classList.toggle('lp-open');document.body.classList.remove('rp-open');return}if(!b||!draft)return;const a=b.dataset.act;
+$('#draftbar').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&b.dataset.act==='cutx'){cutAsst=null;renderDraftBar();return}if(b&&b.dataset.act==='perpx'){perpA=null;renderOverlay();renderDraftBar();return}if(b&&b.dataset.act==='mnew'){meas.pts=[];cursor=null;renderOverlay();renderDraftBar();return}if(b&&b.dataset.act==='landok'){endLand();return}if(b&&b.dataset.act==='opts'){document.body.classList.toggle('lp-open');document.body.classList.remove('rp-open');return}if(!b||!draft)return;const a=b.dataset.act;
   if(a==='dx')cancelDraft();else if(a==='dback'){draft.pts.pop();if(!draft.pts.length){draft=null;cursor=null}else cursor=draft.pts[draft.pts.length-1];renderOverlay();renderDraftBar()}
   else if(a==='dok'){if(draft.kind==='room')closeRoom();else if(draft.kind==='stair')finishStairPath();else if(draft.kind==='furn')finishFurn();else finishLine()}
   else if(a==='dopen')finishOpenWall();
