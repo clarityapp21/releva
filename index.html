@@ -1099,7 +1099,8 @@ function render(){LB=[];
     if(sel.t==='room')h+=`<${o.open?'polyline':'polygon'} points="${o.pts.map(p=>p.x+','+p.y).join(' ')}" fill="${ACC}" fill-opacity=".05" stroke="${ACC}" stroke-width="${px(1.5)}" stroke-dasharray="${px(6)} ${px(4)}"/>`;
     const act=gesture&&gesture.mode==='drag'&&gesture.hit&&['rvert','lvert','bvert','svert','fvert'].includes(gesture.hit.t)?gesture.hit.i:-1;
     o_pts.forEach((p,k)=>{if(k===act){const P=p;h+=`<g transform="translate(${P.x} ${P.y}) scale(${1/view.s})"><circle r="12" fill="${ACC}" fill-opacity=".16" stroke="${ACC}" stroke-width="1.5"><animate attributeName="r" values="9;15;9" dur="1.4s" repeatCount="indefinite"/></circle><circle r="5" fill="${ACC}" stroke="#fff" stroke-width="2"/></g>`}else h+=`<circle cx="${p.x}" cy="${p.y}" r="${px(5.5)}" fill="#fff" stroke="${ACC}" stroke-width="${px(2)}"/>`})}
-  {const o=selObj();if(o&&sel&&sel.t==='furn'&&RUN(o)&&!(gesture&&gesture.mode==='drag'))for(let i=0;i<o.pts.length-1;i++){const m={x:(o.pts[i].x+o.pts[i+1].x)/2,y:(o.pts[i].y+o.pts[i+1].y)/2};h+=`<g transform="translate(${m.x} ${m.y}) scale(${1/view.s})"><circle r="7" fill="#fff" stroke="${ACC}" stroke-width="1.5" stroke-dasharray="2 1.5"/><path d="M-3.5 0h7M0-3.5v7" stroke="${ACC}" stroke-width="1.5"/></g>`}}
+  {const o=selObj();if(o&&sel&&sel.t==='furn'&&RUN(o)&&!(gesture&&gesture.mode==='drag'))for(let i=0;i<o.pts.length-1;i++){if(dist(o.pts[i],o.pts[i+1])*view.s<=70)continue;const m={x:o.pts[i].x*.75+o.pts[i+1].x*.25,y:o.pts[i].y*.75+o.pts[i+1].y*.25};h+=`<g transform="translate(${m.x} ${m.y}) scale(${1/view.s})"><circle r="7" fill="#fff" stroke="${ACC}" stroke-width="1.5" stroke-dasharray="2 1.5"/><path d="M-3.5 0h7M0-3.5v7" stroke="${ACC}" stroke-width="1.5"/></g>`}}
+  {const o=selObj();if(o&&sel&&sel.t==='furn')furnSides(o).forEach(q=>{const m={x:(q.a.x+q.b.x)/2,y:(q.a.y+q.b.y)/2};h+=`<g transform="translate(${m.x} ${m.y}) rotate(${Math.atan2(q.o.y,q.o.x)/DEG}) scale(${1/view.s})"><rect x="-5" y="-5" width="10" height="10" transform="rotate(45)" fill="#fff" stroke="${ACC}" stroke-width="1.8"/><path d="M9 0h5M-9 0h-5" stroke="${ACC}" stroke-width="1.4"/></g>`})}
   {const o=selObj();if(o&&sel&&sel.t==='stair'&&o.path)stairWHandles(o).forEach(q=>{h+=`<g transform="translate(${q.x} ${q.y}) rotate(${Math.atan2(q.n.y,q.n.x)/DEG}) scale(${1/view.s})"><rect x="-6" y="-6" width="12" height="12" transform="rotate(45)" fill="#fff" stroke="${ACC}" stroke-width="2"/><path d="M-13 0h-5M13 0h5" stroke="${ACC}" stroke-width="1.6"/></g>`})}
   gW.innerHTML=h;applyT()}
 function openingSVG(o,g){const{w,t,c,ang,sign}=g,isS=sel&&sel.t==='opening'&&sel.id===o.id;let h=`<g transform="translate(${c.x} ${c.y}) rotate(${ang})"><g class="${newIds.has(o.id)?'pop':''}">`;
@@ -1312,9 +1313,31 @@ function wallAskSVG(){if(!wallAsk)return '';const cols=['#2563eb','#16a34a'];ret
 const FURN={mesada:{n:'Mesada',c:'#4f46e5',d:60,alt:90},alacena:{n:'Alacena',c:'#3f3f46',d:30,alt:150},placar:{n:'Placar',c:'#57534e',d:60,alt:240}};
 const FRECT=()=>tool==='lines'&&sub.lines==='placar';
 const RUN=f=>f&&(f.t==='mesada'||f.t==='alacena')&&f.v===2;
-function runFront(f){const P=f.pts,d=f.d||FURN[f.t].d,sd=f.side||1,n=P.length,U=[],N=[];for(let i=0;i<n-1;i++){const L=dist(P[i],P[i+1])||1,u={x:(P[i+1].x-P[i].x)/L,y:(P[i+1].y-P[i].y)/L};U.push(u);N.push({x:-u.y*sd,y:u.x*sd})}
-  const F=[];for(let i=0;i<n;i++){if(i===0||i===n-1){const k=i?n-2:0;F.push({x:P[i].x+N[k].x*d,y:P[i].y+N[k].y*d});continue}
-    const a={x:P[i].x+N[i-1].x*d,y:P[i].y+N[i-1].y*d},b={x:P[i].x+N[i].x*d,y:P[i].y+N[i].y*d},u1=U[i-1],u2=U[i],cr=u1.x*u2.y-u1.y*u2.x;
+const runDs=(f,i)=>f.ds&&f.ds[i]!=null?f.ds[i]:(f.d||FURN[f.t].d);
+const FMAXD={mesada:70};
+const _lx=(A,u1,B,u2)=>{const cr=u1.x*u2.y-u1.y*u2.x;if(Math.abs(cr)<1e-6)return null;const t=((B.x-A.x)*u2.y-(B.y-A.y)*u2.x)/cr;return{x:A.x+u1.x*t,y:A.y+u1.y*t}};
+function runUN(f){const P=f.pts,sd=f.side||1,U=[],N=[];for(let i=0;i<P.length-1;i++){const L=dist(P[i],P[i+1])||1,u={x:(P[i+1].x-P[i].x)/L,y:(P[i+1].y-P[i].y)/L};U.push(u);N.push({x:-u.y*sd,y:u.x*sd})}return{U,N}}
+// lados que se pueden mover como muros
+function furnSides(f){const out=[],P=f.pts;if(RUN(f)){const Fr=runFront(f),{U,N}=runUN(f),n=P.length;
+    for(let i=0;i<n-1;i++){out.push({k:'b',i,a:P[i],b:P[i+1],o:{x:-N[i].x,y:-N[i].y}});out.push({k:'f',i,a:Fr[i],b:Fr[i+1],o:N[i]})}
+    out.push({k:'c0',i:0,a:P[0],b:Fr[0],o:{x:-U[0].x,y:-U[0].y}});out.push({k:'c1',i:n-2,a:P[n-1],b:Fr[n-1],o:U[n-2]});return out}
+  if(f.t==='placar'||(f.t==='alacena'&&P.length===4)){const c={x:(P[0].x+P[2].x)/2,y:(P[0].y+P[2].y)/2};for(let j=0;j<4;j++){const a=P[j],b=P[(j+1)%4],L=dist(a,b)||1;let o={x:-(b.y-a.y)/L,y:(b.x-a.x)/L};const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2};if((m.x-c.x)*o.x+(m.y-c.y)*o.y<0)o={x:-o.x,y:-o.y};out.push({k:'r',i:j,a,b,o})}}
+  return out}
+function sideApply(f,o0,sd,k){const P0=o0.pts;f.pts=P0.map(p=>({...p}));if(o0.ds)f.ds=o0.ds.slice();else delete f.ds;f.d=o0.d;
+  if(sd.k==='r'){const j=sd.i,a=(j+1)%4;for(const q of[j,a])f.pts[q]={x:r1(P0[q].x+sd.o.x*k),y:r1(P0[q].y+sd.o.y*k)};return[j,a]}
+  const{U,N}=runUN(o0),n=P0.length,ds=[];for(let i=0;i<n-1;i++)ds[i]=runDs(o0,i);
+  if(sd.k==='f'){ds[sd.i]=Math.round((ds[sd.i]+k)*10)/10;f.ds=ds;return[]}
+  if(sd.k==='b'){const i=sd.i,sh={x:-N[i].x*k,y:-N[i].y*k},A={x:P0[i].x+sh.x,y:P0[i].y+sh.y};
+    f.pts[i]=i>0?(_lx(A,U[i],P0[i],U[i-1])||A):A;const B={x:P0[i+1].x+sh.x,y:P0[i+1].y+sh.y};f.pts[i+1]=i+1<n-1?(_lx(B,U[i],P0[i+1],U[i+1])||B):B;f.pts[i]={x:r1(f.pts[i].x),y:r1(f.pts[i].y)};f.pts[i+1]={x:r1(f.pts[i+1].x),y:r1(f.pts[i+1].y)};
+    ds[i]=Math.round((ds[i]+k)*10)/10;f.ds=ds;return[i,i+1]}
+  const q=sd.k==='c0'?0:n-1;f.pts[q]={x:r1(P0[q].x+sd.o.x*k),y:r1(P0[q].y+sd.o.y*k)};return[q]}
+function sideOk(f,moved){if(RUN(f)){const n=f.pts.length;for(let i=0;i<n-1;i++){if(dist(f.pts[i],f.pts[i+1])<10)return false;const d=runDs(f,i);if(d<10||(FMAXD[f.t]&&d>FMAXD[f.t]+.01))return false}}else{if(dist(f.pts[0],f.pts[1])<10||dist(f.pts[1],f.pts[2])<10)return false}
+  return moved.every(p=>{const L=dist(p.a,p.b),n=Math.max(1,Math.ceil(L/4));for(let s=1;s<=n;s++){const q={x:p.a.x+(p.b.x-p.a.x)*s/n,y:p.a.y+(p.b.y-p.a.y)*s/n};if(dist(outOfWalls(q,null),q)>.6)return false}return true})}
+function sideDrag(f,o0,sd,k){k=Math.round(k);if(sd.k==='f'||sd.k==='b'){const d0=runDs(o0,sd.i),t=d0+k;if(Math.abs(t-60)<4&&f.t==='mesada')k=60-d0}
+  const SA=kk=>sideApply(f,o0,sd,kk).map(i=>({a:o0.pts[i],b:f.pts[i]}));let m=SA(k);if(sideOk(f,m))return k;let lo=0,hi=k;for(let it=0;it<14;it++){const mid=(lo+hi)/2;m=SA(mid);if(sideOk(f,m))lo=mid;else hi=mid}SA(Math.trunc(lo));return Math.trunc(lo)}
+function runFront(f){const P=f.pts,sd=f.side||1,n=P.length,U=[],N=[];for(let i=0;i<n-1;i++){const L=dist(P[i],P[i+1])||1,u={x:(P[i+1].x-P[i].x)/L,y:(P[i+1].y-P[i].y)/L};U.push(u);N.push({x:-u.y*sd,y:u.x*sd})}
+  const F=[];for(let i=0;i<n;i++){if(i===0||i===n-1){const k=i?n-2:0,d=runDs(f,k);F.push({x:P[i].x+N[k].x*d,y:P[i].y+N[k].y*d});continue}
+    const d1=runDs(f,i-1),d2=runDs(f,i),a={x:P[i].x+N[i-1].x*d1,y:P[i].y+N[i-1].y*d1},b={x:P[i].x+N[i].x*d2,y:P[i].y+N[i].y*d2},u1=U[i-1],u2=U[i],cr=u1.x*u2.y-u1.y*u2.x;
     if(Math.abs(cr)<.05){F.push(b);continue}const t=((b.x-a.x)*u2.y-(b.y-a.y)*u2.x)/cr;F.push({x:a.x+u1.x*t,y:a.y+u1.y*t})}return F}
 const runPoly=f=>[...f.pts,...runFront(f).reverse()];
 function runSVG(f,isS){const F=FURN[f.t],c=F.c,P=f.pts;if(P.length<2)return '';const Fr=runFront(f),poly=[...P,...Fr.slice().reverse()].map(q=>q.x+','+q.y).join(' ');
@@ -1342,7 +1365,7 @@ let cutAsst=null;
 function cutTap(w){const f=S.furn.find(x=>x.id===cutAsst);cutAsst=null;renderDraftBar();if(!f){render();return}const P=f.pts;let bi=-1,bd=Infinity,bt=0;for(let i=0;i<P.length-1;i++){const sd=segDist(w,P[i],P[i+1]);if(sd.d<bd){bd=sd.d;bi=i;bt=sd.t}}
   if(bd>(f.d||60)+px(25)){toast('Tocá sobre la mesada');return}const L=dist(P[bi],P[bi+1]);let c={x:r1(P[bi].x+(P[bi+1].x-P[bi].x)*bt),y:r1(P[bi].y+(P[bi+1].y-P[bi].y)*bt)};
   let A,B;if(bt*L<5&&bi>0){A=P.slice(0,bi+1);B=P.slice(bi)}else if((1-bt)*L<5&&bi+1<P.length-1){A=P.slice(0,bi+2);B=P.slice(bi+1)}else{if(bt*L<5||(1-bt)*L<5){toast('Muy cerca de la punta: tocá más adentro');return}A=[...P.slice(0,bi+1),c];B=[c,...P.slice(bi+1)]}
-  f.pts=A.map(q=>({...q}));const g=JSON.parse(JSON.stringify(f));g.id=uid();g.pts=B.map(q=>({...q}));S.furn.push(g);flash(g.id);commit();selectObj({t:'furn',id:f.id},true);render();renderRight();toast(`Cortada en dos: ${fm(plen(A))} + ${fm(plen(B))}`)}
+  const DS=f.ds;f.pts=A.map(q=>({...q}));const g=JSON.parse(JSON.stringify(f));g.id=uid();g.pts=B.map(q=>({...q}));if(DS){f.ds=DS.slice(0,A.length-1);g.ds=DS.slice(DS.length-(B.length-1))}S.furn.push(g);flash(g.id);commit();selectObj({t:'furn',id:f.id},true);render();renderRight();toast(`Cortada en dos: ${fm(plen(A))} + ${fm(plen(B))}`)}
 function runSetSeg(f,i,len){const P=f.pts,a=P[i],b=P[i+1],L=dist(a,b)||1,u={x:(b.x-a.x)/L,y:(b.y-a.y)/L},d=len-L;for(let k=i+1;k<P.length;k++)P[k]={x:r1(P[k].x+u.x*d),y:r1(P[k].y+u.y*d)}}
 function runAutoSide(P){const a=P[0],b=P[1],L=dist(a,b)||1,u={x:(b.x-a.x)/L,y:(b.y-a.y)/L},nl={x:-u.y,y:u.x},m={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
   const F=faceCands(m,3).find(F=>F.gap<3&&Math.abs(F.u.x*u.x+F.u.y*u.y)>.95);if(F)return F.n.x*nl.x+F.n.y*nl.y>0?1:-1;
@@ -1506,7 +1529,8 @@ function wallHitInterior(w){if(S.marks.some(m=>dist(m,w)<px(12)))return null;let
 function hitTest(w,scope){
   {const o=selObj();if(o&&sel.t==='stair'&&o.path){for(let i=0;i<o.path.length;i++)if(dist(w,o.path[i])<px(coarse()?17:13))return{t:'svert',id:o.id,i};const H=stairWHandles(o);for(let k=0;k<H.length;k++)if(dist(w,H[k])<px(coarse()?17:13))return{t:'swid',id:o.id,i:k}}}
   {const o=selObj();if(o&&sel.t==='wall'){const n=o.pts.length;for(const k of[sel.i,(sel.i+1)%n])if(dist(w,o.pts[k])<px(coarse()?18:13))return{t:'wvert',id:o.id,i:k}}}
-  {const o=selObj();if(o&&sel.t==='furn'&&(o.t==='mesada'||RUN(o))){for(let i=0;i<o.pts.length;i++)if(dist(w,o.pts[i])<px(13))return{t:'fvert',id:o.id,i};if(RUN(o))for(let i=0;i<o.pts.length-1;i++){const m={x:(o.pts[i].x+o.pts[i+1].x)/2,y:(o.pts[i].y+o.pts[i+1].y)/2};if(dist(w,m)<px(12))return{t:'fvert',id:o.id,i:i+1,ins:true}}}}
+  {const o=selObj();if(o&&sel.t==='furn'&&(o.t==='mesada'||RUN(o))){for(let i=0;i<o.pts.length;i++)if(dist(w,o.pts[i])<px(13))return{t:'fvert',id:o.id,i};if(RUN(o))for(let i=0;i<o.pts.length-1;i++){const m={x:o.pts[i].x*.75+o.pts[i+1].x*.25,y:o.pts[i].y*.75+o.pts[i+1].y*.25};if(dist(w,m)<px(11)&&dist(o.pts[i],o.pts[i+1])*view.s>70)return{t:'fvert',id:o.id,i:i+1,ins:true}}}
+    if(o&&sel.t==='furn'){const SD=furnSides(o);let bi=-1,bd=px(coarse()?13:9);SD.forEach((q,j)=>{const m={x:(q.a.x+q.b.x)/2,y:(q.a.y+q.b.y)/2},d=Math.min(segDist(w,q.a,q.b).d,dist(w,m)*.7);if(d<bd){bd=d;bi=j}});if(bi>=0)return{t:'fside',id:o.id,i:bi}}}
   const o=selObj();if(o&&(sel.t==='room'||sel.t==='line'||sel.t==='beam'))for(let i=0;i<o.pts.length;i++)if(dist(w,o.pts[i])<px(13))return{t:sel.t==='room'?'rvert':sel.t==='line'?'lvert':'bvert',id:o.id,i};
   if(scope!=='walls'&&scope!=='rooms'||true){
     if(scope==='all')for(const m of markers)if(dist(w,m)<px(9))return{t:'alert',ref:m.a.ref};
@@ -1525,7 +1549,7 @@ function hitTest(w,scope){
     if(hit){const A=Math.abs(area(r.pts));if(A<ba){ba=A;best=r}}}if(best)return{t:'room',id:best.id}}
   return null}
 function scopeForTool(){if(tool==='select')return 'all';if(tool==='estr'){const k=sub.estr.k;return k==='wall'?'walls':k==='losa'?'rooms':'objects'}return 'objects'}
-function hitToSel(h){if(h.t==='alert')return h.ref;if(h.t==='fvert')return{t:'furn',id:h.id};if(h.t==='rvert')return{t:'room',id:h.id};if(h.t==='lvert')return{t:'line',id:h.id};if(h.t==='bvert')return{t:'beam',id:h.id};if(h.t==='svert'||h.t==='swid')return{t:'stair',id:h.id};if(h.t==='wall')return{t:'wall',id:h.id,i:h.i};if(h.t==='wvert')return sel&&sel.t==='wall'?{...sel}:{t:'room',id:h.id};return{t:h.t,id:h.id}}
+function hitToSel(h){if(h.t==='alert')return h.ref;if(h.t==='fvert'||h.t==='fside')return{t:'furn',id:h.id};if(h.t==='rvert')return{t:'room',id:h.id};if(h.t==='lvert')return{t:'line',id:h.id};if(h.t==='bvert')return{t:'beam',id:h.id};if(h.t==='svert'||h.t==='swid')return{t:'stair',id:h.id};if(h.t==='wall')return{t:'wall',id:h.id,i:h.i};if(h.t==='wvert')return sel&&sel.t==='wall'?{...sel}:{t:'room',id:h.id};return{t:h.t,id:h.id}}
 const sameSel=(a,b)=>a&&b&&a.t===b.t&&a.id===b.id&&(a.t!=='wall'||a.i===b.i);
 
 /* ===================== Punteros en el plano ===================== */
@@ -1552,7 +1576,7 @@ svg.addEventListener('pointerdown',e=>{$('#menu').classList.add('hidden');if(mob
   if(hit&&hit.t==='item'&&ITEMS[tool]&&sub[tool]&&sub[tool].k==='item'){gesture.hit=hit;gesture.armGrab=sameSel(hitToSel(hit),sel);gesture.mode='pending';
     gesture.timer=setTimeout(()=>{const g=gesture;if(g&&g.mode==='pending'&&!g.moved){g.mode='done';selectObj(hitToSel(hit));try{navigator.vibrate&&navigator.vibrate(12)}catch(_){}render();toast('Seleccionado. Para poner otro encima, tocá sin mantener')}},520);return}
   if(hit){gesture.hit=hit;const hs=hitToSel(hit);
-    if(['rvert','lvert','bvert','wvert','svert','swid','fvert'].includes(hit.t)||e.pointerType==='mouse'||sameSel(hs,sel))gesture.mode='grab';
+    if(['rvert','lvert','bvert','wvert','svert','swid','fvert','fside'].includes(hit.t)||e.pointerType==='mouse'||sameSel(hs,sel))gesture.mode='grab';
     else{gesture.mode='press';gesture.timer=setTimeout(()=>{if(gesture&&gesture.mode==='press'&&!gesture.moved){beginDrag();try{navigator.vibrate&&navigator.vibrate(12)}catch(_){}render()}},380)}}
   else gesture.tapEmpty=true});
 svg.addEventListener('pointermove',e=>{const p=loc(e);if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,p);
@@ -1583,7 +1607,7 @@ function endPtr(e,cancel){ptrs.delete(e.pointerId);if(!gesture)return;clearTimeo
   if(g.mode==='mgrab'){if(mWalls()){const hs=hitToSel(g.hit||{});const k=msel.findIndex(m=>hs&&m.id===hs.id&&m.i===hs.i);if(k>=0){msel.splice(k,1);renderOverlay();renderQC()}}return}
   if((g.mode==='pending'||g.mode==='boxp')&&!g.moved){if(g.tapEmpty&&msel.length){clearMulti();return}tap(g.w0,g.tapEmpty)}
   else if((g.mode==='press'||g.mode==='grab')&&!g.moved){const s=hitToSel(g.hit);selectObj(s,false,g.hit.p);render()}
-  else if(g.mode==='drag'){if(g.dragged){const o=selObj();const bk=o&&sel.t==='stair'?stairBlock(o):null;if(bk&&!g.wasBlocked){if(g.origPath)o.path=g.origPath;else if(g.orig){o.x=g.orig.x;o.y=g.orig.y}stairSync(o);toast('No se puede: '+blockMsg(bk))}else if(sel.t==='item'&&g.isn&&g.isn.amb){const it=o,raw=g.raw;askWall(g.isn,q=>{if(q){it.x=q.x;it.y=q.y;it.rot=q.rot}else{it.x=r5(raw.x);it.y=r5(raw.y)}commit();render();renderRight()})}else commit();renderRight()}render()}
+  else if(g.mode==='drag'){if(g.dragged){const o=selObj();const bk=o&&sel.t==='stair'?stairBlock(o):null;if(bk&&!g.wasBlocked){if(g.origPath)o.path=g.origPath;else if(g.orig){o.x=g.orig.x;o.y=g.orig.y}stairSync(o);toast('No se puede: '+blockMsg(bk))}else if(sel.t==='item'&&g.isn&&g.isn.amb){const it=o,raw=g.raw;askWall(g.isn,q=>{if(q){it.x=q.x;it.y=q.y;it.rot=q.rot}else{it.x=r5(raw.x);it.y=r5(raw.y)}commit();render();renderRight()})}else commit();renderRight()}render();renderOverlay()}
   else if(g.mode==='frect'){const F0=g.fs.faces[0];let bb=g.b&&g.moved?g.b:null;if(!bb&&F0){let u=F0.u;if(g.fs.faces[1]){const G=g.fs.faces[1];if((G.n.x*u.x+G.n.y*u.y)<0)u={x:-u.x,y:-u.y}}bb={x:g.fs.p.x+u.x*100+F0.n.x,y:g.fs.p.y+u.y*100+F0.n.y}}const R=bb?furnRect(g.fs,bb,sub.lines):null;if(R)addFurnRect(R,sub.lines);else toast('Tocá el rincón o la pared donde arranca y arrastrá hasta el tamaño');renderOverlay()}
   else if(g.mode==='rect'){if(g.b){const a=g.a,b=g.b,w=Math.abs(a.x-b.x),h=Math.abs(a.y-b.y);if(w>=50&&h>=50)addRect(Math.min(a.x,b.x),Math.min(a.y,b.y),w,h);else toast('Arrastrá para marcar el ambiente')}else toast('Arrastrá para marcar el ambiente');renderOverlay()}}
 svg.addEventListener('pointerup',e=>endPtr(e,false));svg.addEventListener('pointercancel',e=>endPtr(e,true));
@@ -1734,7 +1758,8 @@ function dragTo(w){const g=gesture,h=g.hit,o=selObj();if(!o)return;g.dragged=tru
   else if(h.t==='col'){const p=colSnap({x:g.orig.x+(w.x-g.w0.x),y:g.orig.y+(w.y-g.w0.y)});o.x=p.x;o.y=p.y}
   else if(['room','line','beam','furn'].includes(h.t))o.pts=g.orig.map(p=>({x:p.x+d.x,y:p.y+d.y}));
   if(h.t==='furn'&&RUN(o)){let bv={x:0,y:0},bm=0;o.pts.forEach((p,k)=>{const q=outOfWalls(p,g.orig[k]),v={x:q.x-p.x,y:q.y-p.y},mm=Math.hypot(v.x,v.y);if(mm>bm){bm=mm;bv=v}});if(bm>0)o.pts=o.pts.map(p=>({x:r1(p.x+bv.x),y:r1(p.y+bv.y)}))}
-  else if(h.t==='fvert'){if(h.ins){o.pts.splice(h.i,0,{x:r1(w.x),y:r1(w.y)});delete h.ins}const q=RUN(o)?runSnap(w,true)||outOfWalls({x:r1(w.x),y:r1(w.y)},w):snapPt(w,{ortho:false});o.pts[h.i]={x:q.x,y:q.y}}
+  else if(h.t==='fside'){if(!g.fo){g.fo=JSON.parse(JSON.stringify(o));g.fsd=furnSides(g.fo)[h.i]}const sd=g.fsd;if(sd){const k=sideDrag(o,g.fo,sd,(w.x-g.w0.x)*sd.o.x+(w.y-g.w0.y)*sd.o.y);const m={x:(sd.a.x+sd.b.x)/2+sd.o.x*k,y:(sd.a.y+sd.b.y)/2+sd.o.y*k};g.wlbl={x:m.x,y:m.y,t:sd.k==='f'||sd.k==='b'?'Fondo '+fm(runDs(o,sd.i)):sd.k==='r'?(sd.i%2?'Ancho ':'Fondo ')+fm(dist(o.pts[(sd.i+1)%4],o.pts[(sd.i+2)%4])):'Largo '+fm(dist(o.pts[sd.k==='c0'?0:o.pts.length-1],o.pts[sd.k==='c0'?1:o.pts.length-2]))}}}
+  else if(h.t==='fvert'){if(h.ins){o.pts.splice(h.i,0,{x:r1(w.x),y:r1(w.y)});if(o.ds)o.ds.splice(h.i-1,0,o.ds[h.i-1]);delete h.ins}const q=RUN(o)?runSnap(w,true)||outOfWalls({x:r1(w.x),y:r1(w.y)},w):snapPt(w,{ortho:false});o.pts[h.i]={x:q.x,y:q.y}}
   else if(h.t==='rvert')o.pts[h.i]=snapPt(w,{ortho:false,exRoom:o.id});
   else if(h.t==='lvert')o.pts[h.i]=snapPt(w,{ortho:false,exLine:o.id,lines:true,items:true});
   else if(h.t==='bvert')o.pts[h.i]=snapPt(w,{ortho:false,cols:true});
@@ -1976,7 +2001,7 @@ function applyField(el,fin){const f=el.dataset.f;if(!f)return;const o=selObj();i
   else if(f.startsWith('pw:')){if(!fin)return;const i=+f.slice(3);if(n==null||n<.1){renderRight();return}if(o.parts&&o.parts[i]){o.parts[i].w=Math.round(n*1000)/10;partsFit(o)}}
   else if(f==='fw'||f==='fd'){if(n==null||n<.1){if(fin)renderRight();return}if(!fin)return;const d=furnDims(o);furnResize(o,f==='fw'?Math.round(n*1000)/10:d.w,f==='fd'?Math.round(n*1000)/10:d.d)}
   else if(f.startsWith('fseg:')){if(!fin)return;if(n==null||n<.05){renderRight();return}runSetSeg(o,+f.slice(5),Math.round(n*1000)/10)}
-  else if(f==='fdep'){if(n==null||n<.05){if(fin)renderRight();return}o.d=Math.round(n*1000)/10;render();if(!fin)return}
+  else if(f==='fdep'){if(n==null||n<.05){if(fin)renderRight();return}let v=Math.round(n*1000)/10;if(FMAXD[o.t]&&v>FMAXD[o.t]){if(!fin)return;v=FMAXD[o.t];toast('Una mesada no lleva más de 70 cm de fondo (lo ideal es 60)')}o.d=v;delete o.ds;render();if(!fin)return}
   else if(f==='fprof'){if(!num('prof',true,.05)){if(!fin)return}else if(!fin)return}
   else if(f==='falt'){if(!num('alt',true,0)){if(!fin)return}else if(!fin)return}
   else if(f==='iw'||f==='idp'){if(n==null||n<.05){if(fin)renderRight();return}const key=f==='iw'?'w':'d',dd=DIM[o.kind]||[0,0],val=Math.round(n*1000)/10;o[key]=Math.abs(val-(key==='w'?dd[0]:dd[1]))<.1?undefined:val;if(o[key]===undefined)delete o[key];{const sn=itemWallSnap(o.cat,o.kind,o,idim(o));if(sn&&Math.abs(sn.opts[0].rot-(o.rot||0))<1){o.x=sn.opts[0].x;o.y=sn.opts[0].y}}render();if(!fin)return}
@@ -2000,7 +2025,7 @@ rpb.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)re
   else if(a==='nowall'&&o){o.nowall=v!=='0';if(v==='cov')o.cover='semicubierta';else if(v==='fl')o.cover='descubierta';else if(o.cover==='descubierta')o.cover='cubierta';commit();render();renderRight()}
   else if(a==='wnone'&&o){setWs(o,sel.i,{none:v==='1'});commit();render();renderRight()}
   else if(a==='circ'&&o){o.circ=v;commit();render();renderRight()}
-  else if(a==='ftipo'&&o){if(RUN(o)&&o.t!==v)o.d=FURN[v].d;if(RUN(o)&&o.alt===FURN[o.t].alt)o.alt=FURN[v].alt;o.t=v;commit();render();renderRight()}
+  else if(a==='ftipo'&&o){if(RUN(o)&&o.t!==v){o.d=FURN[v].d;delete o.ds}if(RUN(o)&&o.alt===FURN[o.t].alt)o.alt=FURN[v].alt;o.t=v;commit();render();renderRight()}
   else if(a==='fcut'&&o){cutAsst=o.id;hideQC&&hideQC();if(mobile())document.body.classList.remove('rp-open');renderDraftBar();toast('Tocá donde la querés cortar')}
   else if(a==='fside'&&o){o.side=-(o.side||1);commit();render();renderRight()}
   else if(a==='tocomp'&&o){toComp(o);commit();render();renderRight()}
