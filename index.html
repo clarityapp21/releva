@@ -1315,7 +1315,7 @@ function finishBeam(){const B=BEAMS[sub.estr.key],v={id:uid(),tipo:sub.estr.key,
   S.beams.push(v);flash(v.id);draft=null;cursor=null;sel=null;renderRight();commit();renderAll();toast(`${labelOf('beam',v)} · ${fm(plen(v.pts))}`)}
 function placeOpening(w,key){key=key||sub.open;const nw=nearestWall(w,px(dropPrev?60:26),edgeOk(key));if(!nw){toast('Soltala o tocá sobre una pared');return}const P=OPEN[key];if(nw.L<P.w+2){toast('La pared es más corta que la abertura');return}
   const o=Object.assign({id:uid(),room:nw.r.id,seg:nw.i,pos:clamp(r5(nw.pos),P.w/2,nw.L-P.w/2),preset:key},opFrom(P),{out:false,hinge:false,estado:'',nota:''});
-  S.openings.push(o);flash(o.id);selectObj({t:'opening',id:o.id},true);commit();render();if(P.custom){document.body.classList.add('rp-open');renderRight();toast('Armá la ventana: elegí cada hoja y su ancho')}else toast(`${P.n} en ${rn(nw.r)}`)}
+  S.openings.push(o);flash(o.id);selectObj({t:'opening',id:o.id},true);commit();render();if(P.custom){sel={t:'opening',id:o.id};document.body.classList.add('rp-open');renderRight();toast('Armá la ventana: elegí cada hoja y su ancho')}else toast(`${P.n} en ${rn(nw.r)}`)}
 /* ===== artefactos contra la pared ===== */
 function faceCands(p,maxGap){const out=[];for(const r of S.rooms){const n=r.pts.length;for(let i=0;i<segN(r);i++){const t=wallThick(r,i);if(!t)continue;const a=r.pts[i],b=r.pts[(i+1)%n],L=dist(a,b);if(L<1)continue;const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L};let nn={x:-u.y,y:u.x};const sd=(p.x-a.x)*nn.x+(p.y-a.y)*nn.y;if(sd<0)nn={x:-nn.x,y:-nn.y};
   const along=(p.x-a.x)*u.x+(p.y-a.y)*u.y;if(along<-2||along>L+2)continue;const gap=Math.abs(sd)-t/2;if(gap>maxGap)continue;
@@ -1501,18 +1501,20 @@ function alertInfo(m){const near=markers.filter(q=>dist(q,m)<px(14)).map(q=>q.a)
 function zapDirs(c){const ra=(c.rot||0)*DEG,ax=[{x:Math.cos(ra),y:Math.sin(ra)},{x:-Math.sin(ra),y:Math.cos(ra)}],R=S.rooms.filter(r=>!r.open),ins=p=>R.some(r=>pip(p,r.pts)),D=60,out=[];
   for(const a of ax){const pIn=ins({x:c.x+a.x*D,y:c.y+a.y*D}),nIn=ins({x:c.x-a.x*D,y:c.y-a.y*D});if(pIn&&!nIn)out.push(a);else if(nIn&&!pIn)out.push({x:-a.x,y:-a.y})}return out}
 function zapSugg(c){const d=zapDirs(c);return d.length>=2?'esq':d.length===1?'med':'cen'}
-function addZap(c,tz,sz){const d=zapDirs(c),C=COLS.zap;let x=c.x,y=c.y;const off=sz/2-Math.max(c.b,c.h)/2;
-  if(tz==='med'&&d[0]){x+=d[0].x*off;y+=d[0].y*off}else if(tz==='esq'&&d.length>=2){x+=(d[0].x+d[1].x)*off;y+=(d[0].y+d[1].y)*off}else if(tz==='esq'&&d[0]){x+=d[0].x*off;y+=d[0].y*off}
+function zapPos(c,tz,sz){const d=zapDirs(c);let x=c.x,y=c.y;const off=sz/2-Math.max(c.b,c.h)/2;
+  if(tz==='med'&&d[0]){x+=d[0].x*off;y+=d[0].y*off}else if(tz==='esq'&&d.length>=2){x+=(d[0].x+d[1].x)*off;y+=(d[0].y+d[1].y)*off}else if(tz==='esq'&&d[0]){x+=d[0].x*off;y+=d[0].y*off}return{x:r1(x),y:r1(y)}}
+function zapRefit(f){const c=f.col&&S.cols.find(x=>x.id===f.col);if(!c||f.tipo!=='zap')return;const q=zapPos(c,f.tz||'cen',Math.max(f.b,f.h));f.x=q.x;f.y=q.y}
+function addZap(c,tz,sz){const C=COLS.zap,q=zapPos(c,tz,sz),x=q.x,y=q.y;
   const f={id:uid(),preset:'zap',tipo:'zap',tz,b:sz,h:sz,alt:C.alt||40,perf:'',x:r1(x),y:r1(y),rot:c.rot||0,col:c.id,fc:'H-25',arm:'',estado:'',nota:''};S.cols.push(f);layers.fund=true;flash(f.id);commit();render();return f}
 const TZN={cen:'centrada',med:'de medianera',esq:'de esquina'};
 function askZapata(c){if(S.meta.noZap||colFund(c))return;if(S.cols.some(x=>colFund(x)&&(x.col===c.id||dist(x,c)<5)))return;let tz=zapSugg(c),sz=100;
   const seg=(id,arr,cur)=>`<div class="seg" id="${id}">${arr.map(([v,t])=>`<button class="${v===cur?'on':''}" data-v="${v}">${t}</button>`).join('')}</div>`;
   modal(`<h3>¿Qué fundación lleva ${labelOf('col',c)}?</h3><p>Se dibuja debajo de la columna, en la capa de fundaciones.${tz!=='cen'?` Por su ubicación parece <b>${TZN[tz]}</b>.`:''}</p>
-    <div class="field"><label>Zapata</label>${seg('zTz',[['cen','Centrada'],['med','De medianera'],['esq','De esquina']],tz)}</div><div class="field"><label>Medida</label>${seg('zSz',[[80,'0,80'],[100,'1,00'],[120,'1,20'],[150,'1,50']],sz)}</div>
+    <div class="field"><label>Zapata</label>${seg('zTz',[['cen','Centrada'],['med','De medianera'],['esq','De esquina']],tz)}</div><div class="field"><label>Medida (m)</label>${seg('zSz',[[50,'0,50'],[60,'0,60'],[70,'0,70'],[80,'0,80'],[90,'0,90'],[100,'1,00'],[110,'1,10'],[120,'1,20']],sz)}<div style="display:flex;gap:6px;align-items:center;margin-top:6px"><span style="font-size:13px;color:#6b7280">Otra:</span><input class="inp" id="zOt" inputmode="decimal" placeholder="Ej: 1,35" style="max-width:110px"><span style="font-size:13px;color:#6b7280">m</span></div></div>
     <div class="macts" style="flex-wrap:wrap"><button class="btn pri" id="zOk">Poner zapata</button><button class="btn" data-zo="dado">Dado</button><button class="btn" data-zo="pil">Pilote</button><button class="btn" data-zo="no">Ninguna</button><button class="btn" data-zo="nunca" style="opacity:.75">No preguntar más</button></div>`,m=>{
     m.querySelectorAll('#zTz button').forEach(b=>b.onclick=()=>{tz=b.dataset.v;m.querySelectorAll('#zTz button').forEach(x=>x.classList.toggle('on',x===b))});
     m.querySelectorAll('#zSz button').forEach(b=>b.onclick=()=>{sz=+b.dataset.v;m.querySelectorAll('#zSz button').forEach(x=>x.classList.toggle('on',x===b))});
-    m.querySelector('#zOk').onclick=()=>{closeModal();const f=addZap(c,tz,sz);toast(`${labelOf('col',f)} · zapata ${TZN[tz]} ${nf(sz/100)} × ${nf(sz/100)} bajo ${labelOf('col',c)}`)};
+    m.querySelector('#zOk').onclick=()=>{const ov=pm(m.querySelector('#zOt').value);if(ov&&ov>=.3&&ov<=4)sz=Math.round(ov*1000)/10;closeModal();const f=addZap(c,tz,sz);toast(`${labelOf('col',f)} · zapata ${TZN[tz]} ${nf(sz/100)} × ${nf(sz/100)} bajo ${labelOf('col',c)}`)};
     m.querySelectorAll('[data-zo]').forEach(b=>b.onclick=()=>{const v=b.dataset.zo;closeModal();if(v==='nunca'){S.meta.noZap=true;commit();toast('No se pregunta más. Las zapatas se agregan desde Fundaciones');return}if(v==='no')return;
       const C=COLS[v],sz2=v==='dado'?50:30,f={id:uid(),preset:v,tipo:C.t,b:sz2,h:sz2,alt:C.alt||null,perf:'',x:c.x,y:c.y,rot:c.rot||0,col:c.id,fc:'H-25',arm:'',estado:'',nota:''};S.cols.push(f);layers.fund=true;flash(f.id);commit();render();toast(`${labelOf('col',f)} · ${C.n} bajo ${labelOf('col',c)}`)})})}
 
@@ -1627,7 +1629,7 @@ function landTap(w){const st=S.stairs.find(x=>x.id===landAsst);if(!st||!st.path)
   const bk=stairBlock(st);if(bk){st.path=old;stairSync(st);toast('No se puede: '+blockMsg(bk));return}
   commit();render();renderOverlay();toast(`Descanso agregado · ${st.cnt} escalones, pedada ${nf(st.ped,1)} cm`)}
 let qcOn=false,qcPt=null;
-function selectObj(s,quiet,pt){if(msel.length){msel=[];renderOverlay()}sel=s;qcPt=pt||null;qcOn=!quiet;if(tab!=='editar')tab='editar';renderRight();document.body.classList.remove('lp-open')}
+function selectObj(s,quiet,pt){if(quiet&&tool!=='select'&&s&&!(tool==='estr'&&scopeForTool()!=='objects')){sel=null;qcOn=false;renderRight();return}if(msel.length){msel=[];renderOverlay()}sel=s;qcPt=pt||null;qcOn=!quiet;if(tab!=='editar')tab='editar';renderRight();document.body.classList.remove('lp-open')}
 function hideQC(){qcOn=false;$('#qcard').classList.add('hidden')}
 function qcTitle(o){if(sel.t==='item'){const C=ITEMS[o.cat];return[C.kinds[o.kind].n,C.n]}if(sel.t==='opening')return[OPEN[o.preset]?OPEN[o.preset].n:'Abertura',nf(o.w/100)+' × '+nf(o.h/100)+' m'];
   if(sel.t==='line')return[LINES[o.type].n,fm(plen(o.pts)+(o.vert||0))];if(sel.t==='col')return[labelOf('col',o)+' · '+CTYPES[o.tipo],o.b+' × '+o.h+' cm'];if(sel.t==='beam')return[labelOf('beam',o)+' · '+BEAMS[o.tipo].n,fm(plen(o.pts))];
@@ -1696,7 +1698,7 @@ svg.addEventListener('pointerdown',e=>{$('#menu').classList.add('hidden');if(mob
   if(FRECT()){gesture.mode='frect';gesture.fs=furnStart(w);gesture.b=null;renderOverlay();return}
   if(isDrawTool()||copyPick)return;
   if(tool==='name'||tool==='measure'||(tool==='room'&&sub.room==='perp')){gesture.tapEmpty=true;return}
-  const hit=hitTest(w,scopeForTool());
+  const hit=(tool==='select'||scopeForTool()!=='objects')?hitTest(w,scopeForTool()):null;
   if(msel.length&&tool==='select'){if(hit&&inMsel(hitToSel(hit))){gesture.mode='mgrab';gesture.hit=hit;return}if(mWalls()){gesture.tapEmpty=!hit;return}}
   if(tool==='select'&&!hit){gesture.tapEmpty=true;if(e.pointerType==='mouse'){gesture.mode='boxp';return}
     gesture.hold=true;gesture.timer=setTimeout(()=>{const g=gesture;if(g&&g.mode==='pending'&&!g.moved){g.mode='box';g.hold=false;g.a=g.w0;g.b=null;try{navigator.vibrate&&navigator.vibrate(18)}catch(_){}toast('Arrastrá para marcar el recuadro');renderOverlay()}},HOLDMS);renderOverlay();return}
@@ -1885,7 +1887,7 @@ function dragTo(w){const g=gesture,h=g.hit,o=selObj();if(!o)return;g.dragged=tru
     stairSync(o);g.wlbl={x:tip.x,y:tip.y,t:'Ancho '+fm(fw[fi])};renderOverlay()}
   else if(h.t==='item'){o.x=g.orig.x+d.x;o.y=g.orig.y+d.y;g.raw={x:o.x,y:o.y};const sn=itemWallSnap(o.cat,o.kind,g.raw,idim(o));g.isn=sn;if(sn){const q=sn.opts[0];o.x=q.x;o.y=q.y;o.rot=q.rot}}
   else if(h.t==='stair'){o.x=g.orig.x+d.x;o.y=g.orig.y+d.y}
-  else if(h.t==='col'){const p=colSnap({x:g.orig.x+(w.x-g.w0.x),y:g.orig.y+(w.y-g.w0.y)},o);o.x=p.x;o.y=p.y;if(p.rot!=null)o.rot=p.rot}
+  else if(h.t==='col'){const p=colSnap({x:g.orig.x+(w.x-g.w0.x),y:g.orig.y+(w.y-g.w0.y)},o);o.x=p.x;o.y=p.y;if(p.rot!=null)o.rot=p.rot;S.cols.forEach(f=>{if(f.col===o.id)zapRefit(f)})}
   else if(['room','line','beam','furn'].includes(h.t))o.pts=g.orig.map(p=>({x:p.x+d.x,y:p.y+d.y}));
   if(h.t==='furn'&&RUN(o)){let bv={x:0,y:0},bm=0;o.pts.forEach((p,k)=>{const q=outOfWalls(p,g.orig[k]),v={x:q.x-p.x,y:q.y-p.y},mm=Math.hypot(v.x,v.y);if(mm>bm){bm=mm;bv=v}});if(bm>0)o.pts=o.pts.map(p=>({x:r1(p.x+bv.x),y:r1(p.y+bv.y)}))}
   else if(h.t==='fside'){if(!g.fo){g.fo=JSON.parse(JSON.stringify(o));g.fsd=furnSides(g.fo)[h.i]}const sd=g.fsd;if(sd){const k=sideDrag(o,g.fo,sd,(w.x-g.w0.x)*sd.o.x+(w.y-g.w0.y)*sd.o.y);const m={x:(sd.a.x+sd.b.x)/2+sd.o.x*k,y:(sd.a.y+sd.b.y)/2+sd.o.y*k};g.wlbl={x:m.x,y:m.y,t:sd.k==='f'||sd.k==='b'?'Fondo '+fm(runDs(o,sd.i)):sd.k==='r'?(sd.i%2?'Ancho ':'Fondo ')+fm(dist(o.pts[(sd.i+1)%4],o.pts[(sd.i+2)%4])):'Largo '+fm(dist(o.pts[sd.k==='c0'?0:o.pts.length-1],o.pts[sd.k==='c0'?1:o.pts.length-2]))}}}
@@ -2019,7 +2021,7 @@ function panelEditar(){const o=selObj();
     ${estadoHTML(o)}${notaHTML(o,el?'Estado de aislación, empalmes, protecciones…':'Pérdidas, oxidación, uniones…')}${delHTML}`}
   if(sel.t==='col'){const fund=colFund(o),fam=COLFAM[o.tipo],circ=o.tipo==='hac'||o.tipo==='pil',conc=['ha','hac','zap','dado','pil'].includes(o.tipo);
     return head(colPreview(Object.keys(COLS).find(k=>COLS[k].t===o.tipo)||'ha20'),`${labelOf('col',o)} · ${CTYPES[o.tipo]}`,fam?esc(o.perf||''):circ?`Ø ${o.b} cm`:`${o.b} × ${o.h} cm`)+
-    `<div class="field"><label>Tipo</label><select class="inp" data-f="ctipo">${optHTML(CTYPES,o.tipo)}</select></div>
+    `<div class="field"><label>Tipo</label><select class="inp" data-f="ctipo">${optHTML(CTYPES,o.tipo)}</select></div>${o.tipo==='zap'?`<div class="field"><label>Zapata</label><div class="seg">${Object.entries(TZN).map(([k,n])=>`<button class="${(o.tz||'cen')===k?'on':''}" data-act="ztz" data-v="${k}">${n[0].toUpperCase()+n.slice(1)}</button>`).join('')}</div></div><div class="field"><label>Medidas habituales (m)</label><div class="seg" style="flex-wrap:wrap">${[50,60,70,80,90,100,110,120].map(v=>`<button class="${o.b===v&&o.h===v?'on':''}" data-act="zsz" data-v="${v}">${nf(v/100)}</button>`).join('')}</div></div>`:''}
     ${fam?`<div class="field"><label>Perfil</label><select class="inp" data-f="perf">${perfOpts(fam).map(x=>`<option ${o.perf===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>`:
       `<div class="row2"><div class="field"><label>${circ?'Diámetro (cm)':'Lado b (cm)'}</label>${cIn('cb',o.b)}</div>${circ?'':`<div class="field"><label>Lado h (cm)</label>${cIn('ch',o.h)}</div>`}</div>`}
     ${fund?`<div class="row2"><div class="field"><label>${o.tipo==='pil'?'Largo (cm)':'Altura (cm)'}</label>${cIn('calt',o.alt)}</div><div class="field"><label>Profundidad (cm)</label>${cIn('prof',o.prof)}</div></div>`:''}
@@ -2139,7 +2141,7 @@ function applyField(el,fin){const f=el.dataset.f;if(!f)return;const o=selObj();i
   else if(f==='falt'){if(!num('alt',true,0)){if(!fin)return}else if(!fin)return}
   else if(f==='iw'||f==='idp'){if(n==null||n<.05){if(fin)renderRight();return}const key=f==='iw'?'w':'d',dd=DIM[o.kind]||[0,0],val=Math.round(n*1000)/10;o[key]=Math.abs(val-(key==='w'?dd[0]:dd[1]))<.1?undefined:val;if(o[key]===undefined)delete o[key];{const sn=itemWallSnap(o.cat,o.kind,o,idim(o));if(sn&&Math.abs(sn.opts[0].rot-(o.rot||0))<1){o.x=sn.opts[0].x;o.y=sn.opts[0].y}}render();if(!fin)return}
   else if(['height','alt','vert','ow','oh','osill'].includes(f)){const key={height:'height',alt:'alt',vert:'vert',ow:'w',oh:'h',osill:'sill'}[f],w0=o.w;if(!num(key,true,['height','ow','oh'].includes(f)?.01:0)){if(!fin)return}else{if(f==='ow'&&o.parts&&w0>0){const k=o.w/w0;o.parts.forEach(p=>p.w=Math.round(p.w*k*10)/10)}render();if(!fin)return}}
-  else if(['wall','cb','ch','bb','bh'].includes(f)){const key={wall:'wall',cb:'b',ch:'h',bb:'b',bh:'h'}[f];if(!num(key,false,1)){if(!fin)return}else{if(f==='cb'&&o.tipo==='hac')o.h=o.b;render();if(!fin)return}}
+  else if(['wall','cb','ch','bb','bh'].includes(f)){const key={wall:'wall',cb:'b',ch:'h',bb:'b',bh:'h'}[f];if(!num(key,false,1)){if(!fin)return}else{if(f==='cb'&&o.tipo==='hac')o.h=o.b;if(o.tipo==='zap'&&o.col)zapRefit(o);render();if(!fin)return}}
   else if(f.startsWith('wl:')){if(!fin)return;const i=+f.slice(3);if(n==null||n<=.05){renderRight();return}const ax=dist(o.pts[i],o.pts[(i+1)%o.pts.length]),dl=o.open?0:ax-innerLen(o,i);setWallLength(o,i,Math.round((n*100+dl)*10)/10)}
   commit();render();if(rp)renderRight()}
 rpb.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,v=b.dataset.v,o=selObj();
@@ -2158,6 +2160,8 @@ rpb.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)re
   else if(a==='nowall'&&o){if(v==='ab'){o.nowall=false;o.abierto=true;o.cover='descubierta';commit();render();renderRight();return}o.abierto=false;o.nowall=v!=='0';if(v==='cov')o.cover='semicubierta';else if(v==='fl')o.cover='descubierta';else if(o.cover==='descubierta')o.cover='cubierta';commit();render();renderRight()}
   else if(a==='wnone'&&o){setWs(o,sel.i,{none:v==='1'});commit();render();renderRight()}
   else if(a==='circ'&&o){o.circ=v;commit();render();renderRight()}
+  else if(a==='ztz'&&o){o.tz=v;if(!o.col){const cc=S.cols.filter(x=>!colFund(x)).sort((p,q)=>dist(p,o)-dist(q,o))[0];if(cc&&dist(cc,o)<120)o.col=cc.id}zapRefit(o);commit();render();renderRight()}
+  else if(a==='zsz'&&o){o.b=o.h=+v;zapRefit(o);commit();render();renderRight()}
   else if(a==='caida'&&o){o.losa=Object.assign({},o.losa,{caida:o.losa&&o.losa.caida===v?null:v});commit();render();renderRight()}
   else if(a==='ftipo'&&o){if(RUN(o)&&o.t!==v){o.d=FURN[v].d;delete o.ds}if(RUN(o)&&o.alt===FURN[o.t].alt)o.alt=FURN[v].alt;o.t=v;commit();render();renderRight()}
   else if(a==='fcut'&&o){cutAsst=o.id;hideQC&&hideQC();if(mobile())document.body.classList.remove('rp-open');renderDraftBar();toast('Tocá donde la querés cortar')}
