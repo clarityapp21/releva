@@ -1035,7 +1035,7 @@ function render(){LB=[];
   // marcas de referencia
   if(layers.muros)for(const m of S.marks){const isS=sel&&sel.t==='mark'&&sel.id===m.id;h+=`<g transform="translate(${m.x} ${m.y}) scale(${1/s})"><g class="${newIds.has(m.id)?'pop':''}">${isS?`<circle r="10" fill="${ACC}" fill-opacity=".15" stroke="${ACC}" stroke-width="1.3"/>`:''}<path d="M-6 0h12M0-6v12" stroke="#0f766e" stroke-width="1.6"/><circle r="2.6" fill="#fff" stroke="#0f766e" stroke-width="1.4"/></g></g>`;if(!dense)LBadd(m.x+px(18),m.y-px(9),30,12,45,`<text x="${m.x+px(18)}" y="${m.y-px(9)}" text-anchor="middle" dominant-baseline="central" font-size="${px(8.5)}" font-weight="700" fill="#0f766e" stroke="#fbfbfa" stroke-width="${px(2.5)}" paint-order="stroke">${nf(m.dist/100)}</text>`)}
   // escaleras, escalones y rampas
-  if(layers.muros)for(const st of S.stairs){if(st.path){stairSync(st);const isS=sel&&sel.t==='stair'&&sel.id===st.id;h+=`<g class="${newIds.has(st.id)?'fadein':''}">${stairPathSVG(st,isS)}</g>`;const f0=stairGeom(st).fl[0];if(f0){const m={x:f0.a.x+f0.u.x*(f0.s0+f0.run/2),y:f0.a.y+f0.u.y*(f0.s0+f0.run/2)},o2=st.ancho/2+px(12),t=`SUBE · ${st.cnt} esc. ${nf(st.alz,1)}/${nf(st.ped,1)}`;LBadd(m.x-f0.n.x*o2,m.y-f0.n.y*o2,t.length*5.4+8,13,80,`<text x="${m.x-f0.n.x*o2}" y="${m.y-f0.n.y*o2}" text-anchor="middle" dominant-baseline="central" font-size="${px(9)}" font-weight="700" fill="#0f766e" stroke="#fbfbfa" stroke-width="${px(3)}" paint-order="stroke">${t}</text>`)}continue}const L=stairLen(st),W=st.ancho,isS=sel&&sel.t==='stair'&&sel.id===st.id,ink='#374151',lw=px(1.1);let g=`<g transform="translate(${st.x} ${st.y}) rotate(${st.rot||0})"><g class="${newIds.has(st.id)?'pop':''}">`;
+  if(layers.muros)for(const st of S.stairs){if(st.path){stairSync(st);const isS=sel&&sel.t==='stair'&&sel.id===st.id;h+=`<g class="${newIds.has(st.id)?'fadein':''}" data-dxf="ESC">${stairPathSVG(st,isS)}</g>`;const f0=stairGeom(st).fl[0];if(f0){const m={x:f0.a.x+f0.u.x*(f0.s0+f0.run/2),y:f0.a.y+f0.u.y*(f0.s0+f0.run/2)},o2=st.ancho/2+px(12),t=`SUBE · ${st.cnt} esc. ${nf(st.alz,1)}/${nf(st.ped,1)}`;LBadd(m.x-f0.n.x*o2,m.y-f0.n.y*o2,t.length*5.4+8,13,80,`<text x="${m.x-f0.n.x*o2}" y="${m.y-f0.n.y*o2}" text-anchor="middle" dominant-baseline="central" font-size="${px(9)}" font-weight="700" fill="#0f766e" stroke="#fbfbfa" stroke-width="${px(3)}" paint-order="stroke">${t}</text>`)}continue}const L=stairLen(st),W=st.ancho,isS=sel&&sel.t==='stair'&&sel.id===st.id,ink='#374151',lw=px(1.1);let g=`<g transform="translate(${st.x} ${st.y}) rotate(${st.rot||0})" data-dxf="ESC"><g class="${newIds.has(st.id)?'pop':''}">`;
     if(isS)g+=`<rect x="${-L/2-px(5)}" y="${-W/2-px(5)}" width="${L+px(10)}" height="${W+px(10)}" fill="${ACC}" fill-opacity=".12" stroke="${ACC}" stroke-width="${px(1.3)}"/>`;
     if(st.t==='caracol'){const R=W/2;g+=`<circle r="${R}" fill="#fff" stroke="${ink}" stroke-width="${lw}"/><circle r="${R*.12}" fill="#fff" stroke="${ink}" stroke-width="${lw}"/>`;for(let k=0;k<st.cnt;k++){const a=k/st.cnt*Math.PI*1.75;g+=`<line x1="${Math.cos(a)*R*.12}" y1="${Math.sin(a)*R*.12}" x2="${Math.cos(a)*R}" y2="${Math.sin(a)*R}" stroke="${ink}" stroke-width="${px(.8)}"/>`}
       g+=`<path d="M${R*.55} 0A${R*.55} ${R*.55} 0 1 1 ${Math.cos(1.6*Math.PI)*R*.55} ${Math.sin(1.6*Math.PI)*R*.55}" fill="none" stroke="#0f766e" stroke-width="${px(1.2)}"/>`}
@@ -1074,7 +1074,7 @@ function render(){LB=[];
       g+=`</g></g>`+lbl(c.x+Math.max(M/2,px(6))+px(4),c.y-Math.max(M/2,px(6))-px(5),labelOf('col',c),COLFAM[c.tipo]&&c.perf?c.perf:(c.tipo==='hac'||c.tipo==='pil')?`Ø${B}`:`${B}×${Hh}`)}
     h+=`<g${op('estr')}>${g}</g>`}
   // cañerías y cables
-  if(layers.muros)for(const f of S.furn)h+=`<g${op('muros')}>${furnSVG(f,sel&&sel.t==='furn'&&sel.id===f.id)}</g>`;
+  if(layers.muros)for(const f of S.furn)h+=`<g${op('muros')} data-dxf="MOB">${furnSVG(f,sel&&sel.t==='furn'&&sel.id===f.id)}</g>`;
   for(const L of S.lines){const T=LINES[L.type];if(!layers[T.layer]||L.pts.length<2)continue;const pts=L.pts.map(q=>q.x+','+q.y).join(' '),isS=sel&&sel.t==='line'&&sel.id===L.id;let g='';
     if(isS)g+=`<polyline points="${pts}" fill="none" stroke="${ACC}" stroke-opacity=".2" stroke-width="${px(10)}" stroke-linejoin="round" stroke-linecap="round"/>`;
     const da=T.dash?`stroke-dasharray="${T.dash.map(px).join(' ')}"`:'',wd=(T.w||1)*2;
@@ -2394,37 +2394,62 @@ function pdfDlg(){const av=PAGES.filter(pageHas);if(!av.length){toast('Todavía 
       mm.querySelector('#pdGo').textContent='Armando…';mm.querySelector('#pdGo').disabled=true;
       try{const jp=await buildPages({pages,all});if(!jp.length){toast('No hay hojas con contenido');closeModal();return}const pdf=makePDF(jp);closeModal();savePDF(pdf,fileName(S).replace(/\.releva$/,'')+'-plano.pdf',jp.length)}catch(e){console.error(e);toast('No se pudo armar el PDF');closeModal()}}})}
 /* ===================== Exportar a AutoCAD (DXF R12) ===================== */
-const DXFL=[['MUROS',['muros'],7,1],['ABERTURAS',['aberturas'],4,1],['COTAS',['cotas'],8,1],['MOBILIARIO',['muebles'],9,0],['ELECTRICIDAD',['elec','cables','etiquetas'],1,0],['SANITARIA',['sanit','fria','caliente','desague','etiquetas'],5,0],['GAS',['gas','etiquetas'],30,0],['ESTRUCTURA',['estr'],6,0],['FUNDACIONES',['fund'],6,0]];
-function dxfCollect(){const keep={view:{...view},layers:{...layers},tool,sel,msel,qcOn};const S0=1;const out=[];
+const DXFOPT=[['muros','Muros (con los huecos de las aberturas)',1],['carp','Carpinterías: puertas, ventanas y portones',0],['cotas','Cotas',1],['nombres','Nombres de ambientes y m²',1],['esc','Escaleras',1],['mob','Mesadas, placares y mobiliario',1],['elec','Instalación eléctrica',0],['sanit','Instalación sanitaria',0],['gas','Instalación de gas',0],['estr','Estructura: columnas y vigas',0],['fund','Fundaciones',0]];
+const DXFPRE={arq:['muros','cotas','nombres','esc','mob'],est:['muros','cotas','estr','fund'],inst:['muros','cotas','nombres','elec','sanit','gas'],todo:DXFOPT.map(o=>o[0])};
+const DXFCOL={'A-MUROS':7,'A-MUROS-RELLENO':8,'A-PISOS':9,'A-CARPINTERIAS':4,'A-COTAS':1,'A-TEXTOS':7,'A-ESCALERAS':3,'A-MOBILIARIO':9,'I-ELECTRICIDAD':1,'I-SANITARIA':5,'I-GAS':30,'E-ESTRUCTURA':6,'E-FUNDACIONES':6};
+// muros: contorno exacto (unión de los tramos) + relleno sólido, cortados en todas las aberturas
+function dxfWalls(out){const R=[],seen=new Set(),gaps=S.openings.map(o=>openingGeom(o)).filter(Boolean);
+  for(const r of S.rooms){const n=r.pts.length;for(let i=0;i<segN(r);i++){const a=r.pts[i],b=r.pts[(i+1)%n],L=dist(a,b);if(L<1)continue;const t=r.nowall?0:wallThick(r,i);
+    if(!t){out.push({t:'line',L:'A-PISOS',a,b});continue}
+    const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L};let iv=[];for(const g of gaps){if(Math.abs(g.u.x*u.y-g.u.y*u.x)>.01)continue;const off=(g.c.x-a.x)*-u.y+(g.c.y-a.y)*u.x;if(Math.abs(off)>1.5)continue;const al=(g.c.x-a.x)*u.x+(g.c.y-a.y)*u.y;iv.push([al-g.w/2,al+g.w/2])}
+    iv.sort((p,q)=>p[0]-q[0]);let s=0;const pcs=[];for(const[g0,g1]of iv){if(g0>s+.5)pcs.push([s,Math.min(g0,L)]);s=Math.max(s,g1)}if(s<L-.5)pcs.push([s,L]);
+    for(const[s0,s1]of pcs){const e0=s0<.01?t/2:0,e1=s1>L-.01?t/2:0,A={x:a.x+u.x*(s0-e0),y:a.y+u.y*(s0-e0)},B={x:a.x+u.x*(s1+e1),y:a.y+u.y*(s1+e1)};
+      const k=[A,B].map(p=>Math.round(p.x)+':'+Math.round(p.y)).sort().join('|');if(seen.has(k))continue;seen.add(k);const n2={x:-u.y*t/2,y:u.x*t/2};
+      R.push({c:[{x:A.x+n2.x,y:A.y+n2.y},{x:B.x+n2.x,y:B.y+n2.y},{x:B.x-n2.x,y:B.y-n2.y},{x:A.x-n2.x,y:A.y-n2.y}],u,len:dist(A,B),t,A})}}}
+  const inside=(p,Q)=>{const d=(p.x-Q.A.x)*Q.u.x+(p.y-Q.A.y)*Q.u.y,e=(p.x-Q.A.x)*-Q.u.y+(p.y-Q.A.y)*Q.u.x;return d>-.02&&d<Q.len+.02&&Math.abs(e)<Q.t/2+.02};
+  const segs=[];
+  for(const Q of R){out.push({t:'solid',L:'A-MUROS-RELLENO',pts:Q.c});for(let j=0;j<4;j++){const p=Q.c[j],q=Q.c[(j+1)%4],Ln=dist(p,q);if(Ln<.05)continue;const v={x:(q.x-p.x)/Ln,y:(q.y-p.y)/Ln},cx=(Q.c[0].x+Q.c[2].x)/2,cy=(Q.c[0].y+Q.c[2].y)/2;let no={x:-v.y,y:v.x};if((p.x+q.x)/2*0+((p.x+q.x)/2-cx)*no.x+((p.y+q.y)/2-cy)*no.y<0)no={x:-no.x,y:-no.y};
+      const ts=[0,1];for(const O of R){if(O===Q)continue;for(let k=0;k<4;k++){const c1=O.c[k],c2=O.c[(k+1)%4],d={x:c2.x-c1.x,y:c2.y-c1.y},den=v.x*d.y-v.y*d.x;if(Math.abs(den)<1e-9)continue;const tt=((c1.x-p.x)*d.y-(c1.y-p.y)*d.x)/den,ss=((c1.x-p.x)*v.y-(c1.y-p.y)*v.x)/den;if(tt>0&&tt<Ln&&ss>=-1e-6&&ss<=1+1e-6)ts.push(tt/Ln)}}
+      ts.sort((x,y)=>x-y);let run=null;for(let m=0;m<ts.length-1;m++){const t0=ts[m],t1=ts[m+1];if(t1-t0<1e-4)continue;const mid={x:p.x+(q.x-p.x)*(t0+t1)/2+no.x*.08,y:p.y+(q.y-p.y)*(t0+t1)/2+no.y*.08};const keep=!R.some(O=>O!==Q&&inside(mid,O));
+        if(keep){if(run&&Math.abs(run[1]-t0)<1e-4)run[1]=t1;else{if(run)segs.push([p,q,run]);run=[t0,t1]}}}if(run)segs.push([p,q,run])}}
+  const ks=new Set();for(const[p,q,[t0,t1]]of segs){const a={x:p.x+(q.x-p.x)*t0,y:p.y+(q.y-p.y)*t0},b={x:p.x+(q.x-p.x)*t1,y:p.y+(q.y-p.y)*t1};const k=[a,b].map(z=>Math.round(z.x*10)+':'+Math.round(z.y*10)).sort().join('|');if(ks.has(k))continue;ks.add(k);out.push({t:'line',L:'A-MUROS',a,b})}}
+function dxfNames(out){for(const r of S.rooms){if(r.open)continue;const c=centroid(r.pts),A=Math.abs(area(r.pts))/1e4;const nm=(r.name||'').trim();let y=c.y-(nm?6:0);
+  if(nm){out.push({t:'text',L:'A-TEXTOS',p:{x:c.x,y:y},h:15,rot:0,ha:1,va:2,s:nm.toUpperCase()});y+=22}
+  out.push({t:'text',L:'A-TEXTOS',p:{x:c.x,y},h:10,rot:0,ha:1,va:2,s:nf(A)+' m²'});if(r.nivel!=null&&r.nivel!=='')out.push({t:'text',L:'A-TEXTOS',p:{x:c.x,y:y+17},h:8,rot:0,ha:1,va:2,s:'NPT '+fNiv(r.nivel)})}}
+function dxfCollect(o){const keep={view:{...view},layers:{...layers},tool,sel,msel,qcOn};const out=[];
+  if(o.muros)dxfWalls(out);if(o.nombres)dxfNames(out);
   const hs=document.createElementNS('http://www.w3.org/2000/svg','svg');hs.setAttribute('width','10');hs.setAttribute('height','10');hs.style.cssText='position:fixed;left:-50px;top:-50px;opacity:0;pointer-events:none';document.body.appendChild(hs);
   const renderSet=on=>{Object.keys(layers).forEach(k=>layers[k]=false);on.forEach(k=>layers[k]=true);render();return gW.innerHTML};
-  try{view={x:0,y:0,s:S0};tool='select';sel=null;msel=[];
-    const base=renderSet(['muros']);const baseSet=new Set();{hs.innerHTML=base;hs.querySelectorAll('*').forEach(e=>baseSet.add(e.outerHTML))}
-    for(const[name,lays,col,needMuros]of DXFL){let html;if(name==='MUROS')html=base;else html=renderSet(needMuros?['muros',...lays]:lays);
-      hs.innerHTML=`<g>${html}</g>`;const skip=name!=='MUROS'&&needMuros?baseSet:null;
-      hs.querySelectorAll('line,polyline,polygon,rect,circle,ellipse,path,text').forEach(el=>{if(el.closest('defs,pattern,clipPath'))return;if(skip&&skip.has(el.outerHTML))return;dxfEl(el,name,out)})}}
+  const each=(html,fn)=>{hs.innerHTML=`<g>${html}</g>`;hs.querySelectorAll('line,polyline,polygon,rect,circle,ellipse,path,text').forEach(el=>{if(!el.closest('defs,pattern,clipPath'))fn(el)})};
+  try{view={x:0,y:0,s:1};tool='select';sel=null;msel=[];
+    const base=renderSet(['muros']),baseSet=new Set();each(base,el=>{baseSet.add(el.outerHTML);const g=el.closest('[data-dxf]'),tg=g&&g.dataset.dxf;if(tg==='ESC'&&o.esc)dxfEl(el,'A-ESCALERAS',out);else if(tg==='MOB'&&o.mob)dxfEl(el,'A-MOBILIARIO',out)});
+    if(o.carp)each(renderSet(['muros','aberturas']),el=>{if(baseSet.has(el.outerHTML)||el.tagName==='text')return;dxfEl(el,'A-CARPINTERIAS',out)});
+    if(o.cotas)each(renderSet(['muros','cotas']),el=>{if(baseSet.has(el.outerHTML))return;if(el.tagName==='text'&&!/^\d+,\d{2}$/.test((el.textContent||'').trim()))return;dxfEl(el,'A-COTAS',out)});
+    const solo=[['mob',['muebles'],'A-MOBILIARIO'],['elec',['elec','cables','etiquetas'],'I-ELECTRICIDAD'],['sanit',['sanit','fria','caliente','desague','etiquetas'],'I-SANITARIA'],['gas',['gas','etiquetas'],'I-GAS'],['estr',['estr'],'E-ESTRUCTURA'],['fund',['fund'],'E-FUNDACIONES']];
+    for(const[k,lays,L]of solo)if(o[k])each(renderSet(lays),el=>dxfEl(el,L,out))}
   catch(e){console.error(e)}
   finally{hs.remove();view=keep.view;Object.assign(layers,keep.layers);tool=keep.tool;sel=keep.sel;msel=keep.msel;render()}
   return out}
-function _isWhite(c){return!c||/^(none|transparent|#fff|#ffffff|white|rgb\(255, ?255, ?255\))$/i.test(c.trim())}
+function _isWhite(c){return!c||/^(none|transparent|#fff|#ffffff|#fbfbfa|white|rgb\(255, ?255, ?255\))$/i.test(c.trim())}
 function _attr(el,a){let e=el;while(e&&e.getAttribute){const v=e.getAttribute(a);if(v!=null&&v!=='inherit')return v;e=e.parentNode}return null}
 function dxfEl(el,L,out){const tag=el.tagName.toLowerCase(),M=el.getCTM();if(!M)return;const P=(x,y)=>({x:M.a*x+M.c*y+M.e,y:M.b*x+M.d*y+M.f}),sc=Math.sqrt(Math.abs(M.a*M.d-M.b*M.c))||1;
   const op=+(_attr(el,'opacity')||1)*+(_attr(el,'stroke-opacity')||1);
   if(tag==='text'){const t=(el.textContent||'').trim();if(!t)return;const x=+el.getAttribute('x')||0,y=+el.getAttribute('y')||0,fs=parseFloat(_attr(el,'font-size')||10)*sc,p=P(x,y),ang=Math.atan2(M.b,M.a)/DEG,an=_attr(el,'text-anchor'),bl=_attr(el,'dominant-baseline');
-    out.push({t:'text',L:L==='MUROS'?'TEXTOS':L,p,h:fs*.72,rot:ang,ha:an==='middle'?1:an==='end'?2:0,va:bl==='central'||bl==='middle'?2:0,s:t});return}
+    out.push({t:'text',L,p,h:fs*.72,rot:ang,ha:an==='middle'?1:an==='end'?2:0,va:bl==='central'||bl==='middle'?2:0,s:t});return}
   const st=_attr(el,'stroke'),sw=parseFloat(_attr(el,'stroke-width')||1)*sc,fill=_attr(el,'fill'),dash=!!_attr(el,'stroke-dasharray');const hasS=st&&st!=='none'&&!_isWhite(st)&&op>.05&&sw>0;
   const hasF=fill&&fill!=='none'&&!_isWhite(fill)&&!/url\(#h(Semi|Fl|Sem)/.test(fill)&&+(_attr(el,'fill-opacity')||1)>.5;if(!hasS&&!hasF)return;
+  if(tag==='line'&&hasS&&sw>=4&&!el.closest('[data-dxf]')&&L!=='E-ESTRUCTURA')return; // muros: ya salen exactos
   const lt=dash?'DASHED':null;
   if(tag==='line'){const a=P(+el.getAttribute('x1'),+el.getAttribute('y1')),b=P(+el.getAttribute('x2'),+el.getAttribute('y2'));
     if(hasS&&sw>=4){const Ln=dist(a,b);if(Ln<.01)return;const u={x:(b.x-a.x)/Ln,y:(b.y-a.y)/Ln},n={x:-u.y*sw/2,y:u.x*sw/2},e=_attr(el,'stroke-linecap')==='square'?sw/2:0,A={x:a.x-u.x*e,y:a.y-u.y*e},B={x:b.x+u.x*e,y:b.y+u.y*e};
-      const q=[{x:A.x+n.x,y:A.y+n.y},{x:B.x+n.x,y:B.y+n.y},{x:B.x-n.x,y:B.y-n.y},{x:A.x-n.x,y:A.y-n.y}];if(/url\(/.test(st))out.push({t:'poly',L,pts:q,closed:1});else out.push({t:'solid',L,pts:q});return}
+      out.push({t:'poly',L,pts:[{x:A.x+n.x,y:A.y+n.y},{x:B.x+n.x,y:B.y+n.y},{x:B.x-n.x,y:B.y-n.y},{x:A.x-n.x,y:A.y-n.y}],closed:1});return}
     if(hasS)out.push({t:'line',L,a,b,lt});return}
   if(tag==='circle'||tag==='ellipse'){const cx=+el.getAttribute('cx')||0,cy=+el.getAttribute('cy')||0,rx=+(el.getAttribute('rx')||el.getAttribute('r'))||0,ry=+(el.getAttribute('ry')||el.getAttribute('r'))||0;if(rx<=0)return;
-    if(Math.abs(rx-ry)<1e-6&&Math.abs(Math.hypot(M.a,M.b)-Math.hypot(M.c,M.d))<1e-6){out.push({t:'circle',L,c:P(cx,cy),r:rx*Math.hypot(M.a,M.b),lt,fill:hasF&&!hasS});return}
+    if(Math.abs(rx-ry)<1e-6&&Math.abs(Math.hypot(M.a,M.b)-Math.hypot(M.c,M.d))<1e-6){out.push({t:'circle',L,c:P(cx,cy),r:rx*Math.hypot(M.a,M.b),lt});return}
     const pts=[];for(let k=0;k<48;k++){const a=k/48*2*Math.PI;pts.push(P(cx+rx*Math.cos(a),cy+ry*Math.sin(a)))}out.push({t:'poly',L,pts,closed:1,lt});return}
   if(tag==='rect'){const x=+el.getAttribute('x')||0,y=+el.getAttribute('y')||0,w=+el.getAttribute('width')||0,h=+el.getAttribute('height')||0;if(w<=0||h<=0||w>50000)return;
     const q=[P(x,y),P(x+w,y),P(x+w,y+h),P(x,y+h)];out.push(hasF&&!hasS&&w*sc<30&&h*sc<30?{t:'solid',L,pts:q}:{t:'poly',L,pts:q,closed:1,lt});return}
-  if(tag==='polyline'||tag==='polygon'){const pts=[...el.points].map(p=>P(p.x,p.y));if(pts.length<2)return;out.push({t:'poly',L,pts,closed:tag==='polygon'?1:0,lt});return}
+  if(tag==='polyline'||tag==='polygon'){const pts=[...el.points].map(p=>P(p.x,p.y));if(pts.length<2)return;if(!hasS)return;out.push({t:'poly',L,pts,closed:tag==='polygon'?1:0,lt});return}
   if(tag==='path'){const d=el.getAttribute('d')||'';const subs=d.match(/[Mm][^Mm]*/g)||[];let cur={x:0,y:0};
     for(const sp of subs){const closed=/[Zz]\s*$/.test(sp.trim());let pts=[];
       if(!/[AaQqCcSsTt]/.test(sp)){const tk=sp.match(/[MmLlHhVvZz]|-?\d*\.?\d+(?:e-?\d+)?/g)||[];let cmd='M',i=0,start=null;const num=()=>+tk[i++];
@@ -2434,7 +2459,7 @@ function dxfEl(el,L,out){const tag=el.tagName.toLowerCase(),M=el.getCTM();if(!M)
           else if(cmd==='H'){cur={x:num(),y:cur.y};pts.push({...cur})}else if(cmd==='h'){cur={x:cur.x+num(),y:cur.y};pts.push({...cur})}
           else if(cmd==='V'){cur={x:cur.x,y:num()};pts.push({...cur})}else if(cmd==='v'){cur={x:cur.x,y:cur.y+num()};pts.push({...cur})}else i++}}
       else{const tp=document.createElementNS('http://www.w3.org/2000/svg','path');const abs=/^m/.test(sp)?'M'+cur.x+' '+cur.y+'m0 0'+sp.slice(1):sp;tp.setAttribute('d',abs);el.ownerSVGElement.appendChild(tp);try{const Ln=tp.getTotalLength(),n=Math.max(6,Math.min(64,Math.ceil(Ln/2)));for(let k=0;k<=n;k++){const q=tp.getPointAtLength(Ln*k/n);pts.push({x:q.x,y:q.y})}cur=pts[pts.length-1]||cur}catch(e){}tp.remove()}
-      if(pts.length<2)continue;const W=pts.map(q=>P(q.x,q.y));if(hasS||hasF)out.push(hasF&&!hasS&&W.length<=4&&closed?{t:'solid',L,pts:W}:{t:'poly',L,pts:W,closed:closed?1:0,lt})}}}
+      if(pts.length<2)continue;const W=pts.map(q=>P(q.x,q.y));out.push(hasF&&!hasS&&W.length<=4&&closed?{t:'solid',L,pts:W}:{t:'poly',L,pts:W,closed:closed?1:0,lt})}}}
 function dxfText(ents,unit){const k=unit==='m'?.01:1,f=v=>(Math.round(v*k*10000)/10000).toString(),X=p=>f(p.x),Y=p=>f(-p.y);const o=[];const w=(c,v)=>{o.push(c,v)};
   const enc=s=>s.replace(/[^\x20-\x7e]/g,ch=>'\\U+'+ch.charCodeAt(0).toString(16).toUpperCase().padStart(4,'0'));
   let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;const ext=p=>{x1=Math.min(x1,p.x);x2=Math.max(x2,p.x);y1=Math.min(y1,-p.y);y2=Math.max(y2,-p.y)};ents.forEach(e=>(e.pts||[e.a,e.b,e.c,e.p].filter(Boolean)).forEach(ext));
@@ -2442,7 +2467,7 @@ function dxfText(ents,unit){const k=unit==='m'?.01:1,f=v=>(Math.round(v*k*10000)
   w(9,'$EXTMIN');w(10,f(x1));w(20,f(y1));w(9,'$EXTMAX');w(10,f(x2));w(20,f(y2));w(0,'ENDSEC');
   w(0,'SECTION');w(2,'TABLES');w(0,'TABLE');w(2,'LTYPE');w(70,2);w(0,'LTYPE');w(2,'CONTINUOUS');w(70,0);w(3,'Solid line');w(72,65);w(73,0);w(40,'0.0');
   w(0,'LTYPE');w(2,'DASHED');w(70,0);w(3,'__ __ __');w(72,65);w(73,2);w(40,'0.75');w(49,'0.5');w(49,'-0.25');w(0,'ENDTAB');
-  const lays=[...DXFL.map(l=>[l[0],l[2]]),['TEXTOS',7]];w(0,'TABLE');w(2,'LAYER');w(70,lays.length+1);w(0,'LAYER');w(2,'0');w(70,0);w(62,7);w(6,'CONTINUOUS');for(const[n,c]of lays){w(0,'LAYER');w(2,n);w(70,0);w(62,c);w(6,'CONTINUOUS')}w(0,'ENDTAB');w(0,'ENDSEC');
+  const used=[...new Set(ents.map(e=>e.L))].sort();w(0,'TABLE');w(2,'LAYER');w(70,used.length+1);w(0,'LAYER');w(2,'0');w(70,0);w(62,7);w(6,'CONTINUOUS');for(const n of used){w(0,'LAYER');w(2,n);w(70,0);w(62,DXFCOL[n]||7);w(6,'CONTINUOUS')}w(0,'ENDTAB');w(0,'ENDSEC');
   w(0,'SECTION');w(2,'ENTITIES');
   for(const e of ents){const lt=()=>{if(e.lt)w(6,e.lt)};
     if(e.t==='line'){w(0,'LINE');w(8,e.L);lt();w(10,X(e.a));w(20,Y(e.a));w(30,0);w(11,X(e.b));w(21,Y(e.b));w(31,0)}
@@ -2452,13 +2477,19 @@ function dxfText(ents,unit){const k=unit==='m'?.01:1,f=v=>(Math.round(v*k*10000)
     else if(e.t==='text'){w(0,'TEXT');w(8,e.L);w(10,X(e.p));w(20,Y(e.p));w(30,0);w(40,f(Math.max(.5,e.h)));w(1,enc(e.s));if(Math.abs(e.rot)>.01)w(50,(Math.round(-e.rot*100)/100).toString());if(e.ha||e.va){w(72,e.ha);w(11,X(e.p));w(21,Y(e.p));w(31,0);w(73,e.va)}}}
   w(0,'ENDSEC');w(0,'EOF');let s='';for(let i=0;i<o.length;i+=2)s+=o[i]+'\r\n'+o[i+1]+'\r\n';return s}
 function dxfDlg(){if(!S.rooms.length&&!S.items.length){toast('Todavía no hay nada dibujado');return}
-  modal(`<h3>Exportar para AutoCAD</h3><p>Archivo DXF de <b>${esc(curP().name)}</b>, con una capa por rubro (muros, aberturas, cotas, mobiliario, electricidad, sanitaria, gas, estructura). Se abre en AutoCAD, BricsCAD, LibreCAD, etc.</p>
-  <div class="field"><label>Unidad de dibujo</label><div class="seg" id="dxU"><button class="on" data-u="m">Metros</button><button data-u="cm">Centímetros</button></div></div>
+  let sv={};try{sv=JSON.parse(localStorage.getItem('releva.dxf')||'{}')}catch(e){}const on=k=>sv[k]!=null?sv[k]:!!DXFOPT.find(o=>o[0]===k)[2];
+  modal(`<h3>Exportar para AutoCAD</h3><p>Archivo DXF de <b>${esc(curP().name)}</b>. Elegí qué va al plano; cada rubro sale en su propia capa.</p>
+  <div class="seg" id="dxP" style="margin-bottom:6px"><button data-p="arq">Arquitectura</button><button data-p="est">Estructura</button><button data-p="inst">Instalaciones</button><button data-p="todo">Todo</button></div>
+  <div id="dxL" style="margin:4px 0 8px">${DXFOPT.map(([k,n])=>`<label class="rb" style="display:flex;gap:8px;align-items:center;padding:5px 0"><input type="checkbox" data-l="${k}" ${on(k)?'checked':''}> ${n}</label>`).join('')}</div>
+  <div class="field"><label>Unidad de dibujo</label><div class="seg" id="dxU"><button class="${sv.u!=='cm'?'on':''}" data-u="m">Metros</button><button class="${sv.u==='cm'?'on':''}" data-u="cm">Centímetros</button></div></div>
   ${S.plantas.length>1?`<label class="rb" style="display:flex;gap:8px;align-items:center;padding:6px 0"><input type="checkbox" id="dxAll"> Todas las plantas (un archivo cada una)</label>`:''}
-  <div class="macts"><button class="btn" data-mx>Cancelar</button><button class="btn pri" id="dxGo">Exportar DXF</button></div>`,mm=>{let u='m';
+  <div class="macts"><button class="btn" data-mx>Cancelar</button><button class="btn pri" id="dxGo">Exportar DXF</button></div>`,mm=>{let u=sv.u==='cm'?'cm':'m';
     mm.querySelectorAll('#dxU button').forEach(b=>b.onclick=()=>{u=b.dataset.u;mm.querySelectorAll('#dxU button').forEach(x=>x.classList.toggle('on',x===b))});
-    mm.querySelector('#dxGo').onclick=()=>{const all=!!(mm.querySelector('#dxAll')&&mm.querySelector('#dxAll').checked);closeModal();const cp=curP(),pls=all?S.plantas:[cp],files=[];
-      try{for(const pl of pls){if(pl!==curP())goPlanta(pl.id);const ents=dxfCollect();files.push({name:fileName(S).replace(/\.releva$/,'')+'-'+String(pl.name).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-')+'.dxf',txt:dxfText(ents,u)})}}
+    mm.querySelectorAll('#dxP button').forEach(b=>b.onclick=()=>{const P=DXFPRE[b.dataset.p];mm.querySelectorAll('[data-l]').forEach(c=>c.checked=P.includes(c.dataset.l))});
+    mm.querySelector('#dxGo').onclick=()=>{const o={};mm.querySelectorAll('[data-l]').forEach(c=>o[c.dataset.l]=c.checked);if(!Object.values(o).some(Boolean)){toast('Elegí al menos una capa');return}
+      try{localStorage.setItem('releva.dxf',JSON.stringify({...o,u}))}catch(e){}
+      const all=!!(mm.querySelector('#dxAll')&&mm.querySelector('#dxAll').checked);closeModal();const cp=curP(),pls=all?S.plantas:[cp],files=[];
+      try{for(const pl of pls){if(pl!==curP())goPlanta(pl.id);const ents=dxfCollect(o);files.push({name:fileName(S).replace(/\.releva$/,'')+'-'+String(pl.name).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-')+'.dxf',txt:dxfText(ents,u)})}}
       catch(e){console.error(e);toast('No se pudo exportar')}finally{if(curP()!==cp)goPlanta(cp.id);render()}
       files.forEach((F,i)=>setTimeout(()=>saveDXF(F.txt,F.name),i*700))}})}
 function saveDXF(txt,name){const u8=new TextEncoder().encode(txt);
