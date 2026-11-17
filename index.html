@@ -1453,9 +1453,10 @@ const refDef={opening:'c',item:'c'};let refMv=null;
 function refPts(st,o){
   if(st==='opening'){const g=openingGeom(o);if(!g)return null;const n={x:-g.u.y,y:g.u.x},h=g.t/2,hw=g.w/2,P=(s,f)=>({x:g.a.x+g.u.x*s+n.x*f,y:g.a.y+g.u.y*s+n.y*f});
     const pts=[[-1,1],[1,1],[1,-1],[-1,-1]].map(([sx,sy],k)=>({k,sx,sy,s:sx*hw,f:sy,p:P(g.pos+sx*hw,sy*h)}));pts.push({k:'c',sx:0,sy:0,s:0,f:0,p:g.c});return{st,u:g.u,n,g,hw,hh:h,pts,seg:o.seg}}
-  const rect=(cx,cy,rot,hw,hh)=>{const ra=(rot||0)*DEG,u={x:Math.cos(ra),y:Math.sin(ra)},n={x:-u.y,y:u.x},pts=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([sx,sy],k)=>({k,sx,sy,p:{x:cx+u.x*sx*hw+n.x*sy*hh,y:cy+u.y*sx*hw+n.y*sy*hh}}));pts.push({k:'c',sx:0,sy:0,p:{x:cx,y:cy}});return{st,u,n,hw,hh,pts}};
+  const rect=(cx,cy,rot,hw,hh)=>{const ra=(rot||0)*DEG,u={x:Math.cos(ra),y:Math.sin(ra)},n={x:-u.y,y:u.x},pts=[[-1,-1],[1,-1],[1,1],[-1,1],[0,-1],[1,0],[0,1],[-1,0]].map(([sx,sy],k)=>({k,sx,sy,p:{x:cx+u.x*sx*hw+n.x*sy*hh,y:cy+u.y*sx*hw+n.y*sy*hh}}));pts.push({k:'c',sx:0,sy:0,p:{x:cx,y:cy}});return{st,u,n,hw,hh,pts}};
   if(st==='item'){const K=ITEMS[o.cat]&&ITEMS[o.cat].kinds[o.kind];if(!K)return null;if(K.w&&(!PTS()||K.fx)){const[W,D]=idim(o);return rect(o.x,o.y,o.rot,W/2,D/2)}const ra=(o.rot||0)*DEG,u={x:Math.cos(ra),y:Math.sin(ra)};return{st,u,n:{x:-u.y,y:u.x},hw:6,hh:6,pts:[{k:'c',sx:0,sy:0,p:{x:o.x,y:o.y}}]}}
   if(st==='col')return rect(o.x,o.y,o.rot,(o.b||20)/2,(o.h||o.b||20)/2);
+  if(st==='beam'&&o.pts&&o.pts.length===2){const a=o.pts[0],b=o.pts[1];return rect((a.x+b.x)/2,(a.y+b.y)/2,Math.atan2(b.y-a.y,b.x-a.x)/DEG,dist(a,b)/2,(o.b||(BEAMS[o.tipo]||{}).b||10)/2)}
   if((st==='line'||st==='beam')&&o.pts&&o.pts.length===2){const a=o.pts[0],b=o.pts[1],L=dist(a,b)||1,u={x:(b.x-a.x)/L,y:(b.y-a.y)/L};return{st,u,n:{x:-u.y,y:u.x},hw:L/2,hh:Math.max(3,L/12),pts:[{k:0,sx:-1,sy:0,p:{...a}},{k:1,sx:1,sy:0,p:{...b}},{k:'c',sx:0,sy:0,p:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}}]}}
   const P=mPts(st,o);return P&&P.length?bboxR(P,st):null}
 function bboxR(P,st){let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;P.forEach(p=>{x1=Math.min(x1,p.x);y1=Math.min(y1,p.y);x2=Math.max(x2,p.x);y2=Math.max(y2,p.y)});const c={x:(x1+x2)/2,y:(y1+y2)/2},hw=(x2-x1)/2,hh=(y2-y1)/2;
@@ -1510,7 +1511,7 @@ const REFT=['opening','item','col','line','beam','furn','stair'];
 function refTarget(){if(tool!=='select')return null;
   if(msel.length){if(mWalls())return null;const L=msel.map(m=>({t:m.t,o:mObj(m)})).filter(x=>x.o);return L.length?{many:true,L}:null}
   if(!sel)return null;const o=selObj();if(!o)return null;if(REFT.includes(sel.t))return{st:sel.t,o};if(sel.t==='wall')return{st:'wall',o,i:sel.i};return null}
-function objOutline(t,o){if(t==='col'||t==='item'||t==='opening'){const R=refPts(t,o);return R?R.pts.map(e=>e.p):[]}return mPts(t,o)||[]}
+function objOutline(t,o){if(t==='col'||t==='item'||t==='opening'||(t==='beam'&&o.pts&&o.pts.length===2)){const R=refPts(t,o);return R?R.pts.map(e=>e.p):[]}return mPts(t,o)||[]}
 function refPtsT(T){if(!T||T.st==='wall')return null;if(T.many){const P=[];T.L.forEach(x=>P.push(...objOutline(x.t,x.o)));return P.length?bboxR(P,'many'):null}return refPts(T.st,T.o)}
 function refOfT(T,R){const k=T.many?refMany:(T.o.ref??'c');return R.pts.find(e=>e.k===k)||R.pts[R.pts.length-1]}
 // el elemento elegido como referencia (en vez de las paredes)
@@ -1556,7 +1557,7 @@ function refFromQC(){const nm=refTo?({wall:'muro',col:'columna',item:'artefacto'
   return `<div class="qc-lv" style="margin-top:8px"><span>Medir desde</span></div><div class="seg" style="margin-top:4px"><button class="${!refTo&&!refPick?'on':''}" data-q="rtow">Las paredes</button><button class="${refTo||refPick?'on':''}" data-q="rtoe">${refPick?'Tocá el elemento…':refTo?'Elemento: '+nm:'Otro elemento'}</button></div>`}
 function refQC(T){const R=refPtsT(T);if(!R)return '';const e=refOfT(T,R),D=refDirs(R),corners=R.pts.length>1,ref2=refTo&&!isSelfRef(T);
   const bw=D.length>2?'style="width:38px"':'';
-  return (corners?`<div class="qc-lv"><span>Punto de referencia</span></div><div class="seg" style="margin-top:4px">${R.pts.map(q=>`<button class="${q===e?'on':''}" data-q="rref" data-v="${q.k}" title="${q.k==='c'?'Centro':'Esquina'}" style="padding:3px 0">${refIcon(R,q.k)}</button>`).join('')}</div>`:'')+refFromQC()+
+  return (corners?`<div class="qc-lv"><span>Punto de referencia</span></div><div class="seg" style="margin-top:4px;flex-wrap:wrap">${R.pts.map(q=>`<button class="${q===e?'on':''}" data-q="rref" data-v="${q.k}" title="${q.k==='c'?'Centro':q.sx&&q.sy?'Esquina':'Medio de una cara'}" style="padding:3px 0;flex:1 0 ${R.pts.length>5?'18%':'auto'}">${refIcon(R,q.k)}</button>`).join('')}</div>`:'')+refFromQC()+
   `<div class="qc-lv" style="margin-top:8px"><span>Distancia</span><input id="qcRd" inputmode="decimal" autocomplete="off" value="${nf((refMv??0)/100)}"><span style="min-width:auto">m</span></div>`+
   `<div class="qc-lv" style="margin-top:6px"><span>Mover</span>${D.map((v,i)=>`<button class="btn" ${bw} data-q="rmv" data-v="${i}" title="Mover esa distancia">${refArrow(v,0)}</button>`).join('')}</div>`+
   `<div class="qc-lv" style="margin-top:6px"><span>${ref2?'Hasta el elemento':'Hasta el muro'}</span>${D.map((v,i)=>`<button class="btn" ${bw} data-q="rto" data-v="${i}" title="Dejar el punto a esa distancia">${refArrow(v,1)}</button>`).join('')}</div>`+
@@ -1577,8 +1578,8 @@ function pasteTap(w){const C=clip;if(!C)return;let p={x:r1(w.x),y:r1(w.y)},bm=nu
 function oGrpList(g){const L=[];for(const[t,k]of MT)for(const o of S[k])if(o.grp===g)L.push({t,id:o.id});return L}
 function curOGrp(){if(!msel.length||mWalls())return null;const g=(mObj(msel[0])||{}).grp;if(!g)return null;if(!msel.every(m=>(mObj(m)||{}).grp===g))return null;return oGrpList(g).length===msel.length?g:null}
 function pickRefAt(w){const T=refTarget(),self=T&&!T.many&&T.st!=='wall'?T.o:null;let best=null;
-  for(const[t,k]of[['col','cols'],['item','items'],['line','lines'],['beam','beams'],['furn','furn'],['stair','stairs'],['opening','openings']])for(const o of S[k]){if(o===self||(T&&T.many&&T.L.some(x=>x.o===o)))continue;if(t!=='opening'&&!mVisible(t,o))continue;const P=objOutline(t,o);if(!P||!P.length)continue;
-    const closed=t==='col'||t==='item'||t==='opening'||t==='stair';let d=closed&&P.length>2&&pip(w,P)?0:1e9;for(let q=0;q<P.length-(closed?0:1);q++){const a=P[q],b=P[(q+1)%P.length];d=Math.min(d,segDist(w,a,b).d)}if(P.length===1)d=dist(w,P[0]);
+  for(const[t,k]of[['col','cols'],['item','items'],['line','lines'],['beam','beams'],['furn','furn'],['stair','stairs'],['opening','openings']])for(const o of S[k]){if(o===self||(T&&T.many&&T.L.some(x=>x.o===o)))continue;if(t!=='opening'&&!mVisible(t,o))continue;let P=objOutline(t,o);if(!P||!P.length)continue;
+    const closed=t==='col'||t==='item'||t==='opening'||t==='stair'||(t==='beam'&&o.pts.length===2);if(closed&&P.length>=8)P=P.slice(0,4);let d=closed&&P.length>2&&pip(w,P)?0:1e9;for(let q=0;q<P.length-(closed?0:1);q++){const a=P[q],b=P[(q+1)%P.length];d=Math.min(d,segDist(w,a,b).d)}if(P.length===1)d=dist(w,P[0]);
     if(d<px(coarse()?20:14)&&(!best||d<best.d))best={d,s:{t,id:o.id}}}
   if(best)return best.s;const wh=wallHitInterior(w);return wh?{t:'wall',id:wh.id,i:wh.i}:null}
 function refPickTap(w){const s=pickRefAt(w);if(!s){toast('Tocá justo sobre el elemento o el muro');return}refTo=s;refPick=false;render();renderQC();toast('Listo: ahora las medidas van hasta ese elemento')}
