@@ -1452,7 +1452,7 @@ function placeItem(w,cat,key){cat=cat||tool;key=key||sub[cat].key;const K=ITEMS[
 const refDef={opening:'c',item:'c'};let refMv=null;
 function refPts(st,o){
   if(st==='opening'){const g=openingGeom(o);if(!g)return null;const n={x:-g.u.y,y:g.u.x},h=g.t/2,hw=g.w/2,P=(s,f)=>({x:g.a.x+g.u.x*s+n.x*f,y:g.a.y+g.u.y*s+n.y*f});
-    const pts=[[-1,1],[1,1],[1,-1],[-1,-1]].map(([sx,sy],k)=>({k,sx,sy,s:sx*hw,f:sy,p:P(g.pos+sx*hw,sy*h)}));pts.push({k:'c',sx:0,sy:0,s:0,f:0,p:g.c});return{st,u:g.u,n,g,hw,hh:h,pts}}
+    const pts=[[-1,1],[1,1],[1,-1],[-1,-1]].map(([sx,sy],k)=>({k,sx,sy,s:sx*hw,f:sy,p:P(g.pos+sx*hw,sy*h)}));pts.push({k:'c',sx:0,sy:0,s:0,f:0,p:g.c});return{st,u:g.u,n,g,hw,hh:h,pts,seg:o.seg}}
   if(st==='item'){const K=ITEMS[o.cat]&&ITEMS[o.cat].kinds[o.kind];if(!K)return null;const ra=(o.rot||0)*DEG,u={x:Math.cos(ra),y:Math.sin(ra)},n={x:-u.y,y:u.x},pts=[];let hw=6,hh=6;
     if(K.w&&(!PTS()||K.fx)){const[W,D]=idim(o);hw=W/2;hh=D/2;[[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sy],k)=>pts.push({k,sx,sy,p:{x:o.x+u.x*sx*hw+n.x*sy*hh,y:o.y+u.y*sx*hw+n.y*sy*hh}}))}
     pts.push({k:'c',sx:0,sy:0,p:{x:o.x,y:o.y}});return{st,u,n,hw,hh,pts}}
@@ -1460,11 +1460,33 @@ function refPts(st,o){
 function refOf(R,o){const k=o.ref??'c';return R.pts.find(e=>e.k===k)||R.pts[R.pts.length-1]}
 function refDirs(R){const{u,n}=R,a=[u,{x:-u.x,y:-u.y}];if(R.st==='item'&&R.pts.length>1)a.push({x:-n.x,y:-n.y},n);return a}
 function markPts(){return S.marks.map(m=>m.free?{x:m.x,y:m.y}:(markGeom(m)||{}).p).filter(Boolean)}
-// rayo hasta la cara de muro más cercana (acepta estar justo apoyado: distancia 0)
-function refRay(p,d){let best=null;for(const r of S.rooms){const n=r.pts.length;for(let i=0;i<segN(r);i++){const t=wallThick(r,i),a=r.pts[i],b=r.pts[(i+1)%n],L=dist(a,b);if(L<1)continue;const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L},nn={x:-u.y,y:u.x};
-  for(const sg of(t?[1,-1]:[1])){const A={x:a.x+nn.x*sg*t/2,y:a.y+nn.y*sg*t/2},e={x:u.x*L,y:u.y*L},den=d.x*e.y-d.y*e.x;if(Math.abs(den)<1e-6)continue;const tt=((A.x-p.x)*e.y-(A.y-p.y)*e.x)/den,uu=((A.x-p.x)*d.y-(A.y-p.y)*d.x)/den;if(tt>-.5&&uu>=-.01&&uu<=1.01&&(best==null||tt<best))best=Math.max(0,tt)}}}return best}
+// red de muros: cada tramo con su "construcción" (muros que se tocan) y sus caras alargadas en las esquinas exteriores
+let _wnK='',_wn=null;
+function wallNet(){let k='';for(const r of S.rooms){k+=r.id+(r.nowall?'n':'')+(r.wall||'')+';';for(const p of r.pts)k+=p.x+','+p.y+';';if(r.ws)k+=JSON.stringify(r.ws)}if(k===_wnK&&_wn)return _wn;
+  const W=[];for(const r of S.rooms){const n=r.pts.length;for(let i=0;i<segN(r);i++){const t=wallThick(r,i);if(!t)continue;const a=r.pts[i],b=r.pts[(i+1)%n],L=dist(a,b);if(L<1)continue;const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L};W.push({r,i,a,b,L,u,n:{x:-u.y,y:u.x},t,ext:{'1':[0,0],'-1':[0,0]}})}}
+  // construcciones: unir los tramos que se tocan
+  const par=W.map((_,k)=>k),f=k=>par[k]===k?k:(par[k]=f(par[k]));
+  for(let x=0;x<W.length;x++)for(let y=x+1;y<W.length;y++){const A=W[x],B=W[y],tol=Math.max(A.t,B.t)/2+2;if(segDist(A.a,B.a,B.b).d<tol||segDist(A.b,B.a,B.b).d<tol||segDist(B.a,A.a,A.b).d<tol||segDist(B.b,A.a,A.b).d<tol)par[f(x)]=f(y)}
+  W.forEach((w,k)=>w.c=f(k));
+  // esquinas: si en un extremo solo llega otro muro que también termina ahí (en L), la cara de afuera se alarga hasta la esquina exterior
+  for(const S0 of W)for(const end of[0,1]){const V=end?S0.b:S0.a,into=end?{x:-S0.u.x,y:-S0.u.y}:S0.u;let part=null,through=false;
+    for(const T of W){if(T===S0)continue;const ea=dist(T.a,V)<1.5,eb=dist(T.b,V)<1.5;
+      if(!ea&&!eb){const sd=segDist(V,T.a,T.b);if(sd.d<1.5)through=true;continue}
+      const away=ea?T.u:{x:-T.u.x,y:-T.u.y},col=Math.abs(away.x*S0.u.x+away.y*S0.u.y)>.98;
+      if(col){if(away.x*into.x+away.y*into.y<0)through=true;continue}
+      if(part&&Math.abs(part.away.x*away.x+part.away.y*away.y)<.98)through=true;else if(!part)part={T,away};
+      if(W.some(Q=>Q!==T&&Q!==S0&&(dist(Q.a,V)<1.5||dist(Q.b,V)<1.5)&&((dist(Q.a,V)<1.5?Q.u.x:-Q.u.x)*away.x+(dist(Q.a,V)<1.5?Q.u.y:-Q.u.y)*away.y)<-.98))through=true}
+    if(!part||through)continue;const dn=S0.n.x*part.away.x+S0.n.y*part.away.y;if(Math.abs(dn)<.2)continue;const sg=dn<0?'1':'-1';S0.ext[sg][end]=Math.min(part.T.t/2/Math.abs(dn),part.T.t*1.5)}
+  _wnK=k;_wn=W;return W}
+function compAt(p){let best=null;for(const w of wallNet()){const d=segDist(p,w.a,w.b).d-w.t/2;if(!best||d<best.d)best={d,c:w.c}}return best?best.c:null}
+// rayo hasta la cara de muro más cercana de la misma construcción (acepta estar justo apoyado: distancia 0)
+function refRay(p,d,comp){let best=null;for(const w of wallNet()){if(comp!=null&&w.c!==comp)continue;
+  for(const sg of[1,-1]){const ex=w.ext[sg],A={x:w.a.x+w.n.x*sg*w.t/2-w.u.x*ex[0],y:w.a.y+w.n.y*sg*w.t/2-w.u.y*ex[0]},Lf=w.L+ex[0]+ex[1],e={x:w.u.x*Lf,y:w.u.y*Lf},den=d.x*e.y-d.y*e.x;if(Math.abs(den)<1e-6)continue;
+    const tt=((A.x-p.x)*e.y-(A.y-p.y)*e.x)/den,uu=((A.x-p.x)*d.y-(A.y-p.y)*d.x)/den;if(tt>-.5&&uu>=-.002&&uu<=1.002&&(best==null||tt<best))best=Math.max(0,tt)}}return best}
 // abertura: distancia a lo largo del muro desde el punto de referencia hasta el muro que corta (sgn=1 hacia b, -1 hacia a)
-function opHit(R,e,sgn){const g=R.g,sr=g.pos+e.s,d={x:g.u.x*sgn,y:g.u.y*sgn};let best=null;for(const f of(e.f>0?[1]:e.f<0?[-1]:[1,-1])){const o=f*(g.t/2+1),p={x:g.a.x+g.u.x*sr+R.n.x*o,y:g.a.y+g.u.y*sr+R.n.y*o},h=refRay(p,d);if(h!=null&&(best==null||h<best))best=h}return best}
+function opHit(R,e,sgn){const g=R.g,sr=g.pos+e.s,d={x:g.u.x*sgn,y:g.u.y*sgn},net=wallNet(),host=net.find(w=>w.r===g.r&&w.i===R.seg),comp=host?host.c:compAt(g.c);let best=null;
+  for(const f of(e.f>0?[1]:e.f<0?[-1]:[1,-1])){const o=f*Math.max(0,g.t/2-.5),p={x:g.a.x+g.u.x*sr+R.n.x*o,y:g.a.y+g.u.y*sr+R.n.y*o},h=refRay(p,d,comp);if(h!=null&&(best==null||h<best))best=h}return best}
+
 // al arrastrar o colocar: el punto de referencia se imanta a los puntos de Medir y a las caras de los muros
 function opRefSnap(o,thr){const R=refPts('opening',o);if(!R)return null;const g=R.g,e=refOf(R,o),sr=g.pos+e.s;let best=null;const tr=(s,p)=>{const d=Math.abs(s-sr);if(d<thr&&(!best||d<best.d))best={d,s,p}};
   for(const m of markPts()){const v={x:m.x-g.a.x,y:m.y-g.a.y},al=v.x*g.u.x+v.y*g.u.y,pp=Math.abs(v.x*R.n.x+v.y*R.n.y);if(pp<=g.t/2+60&&al>=-1&&al<=g.L+1)tr(al,m)}
@@ -1474,16 +1496,16 @@ function itemRefSnap(o,thr,wallU){const R=refPts('item',o);if(!R)return null;con
   for(const m of markPts()){const dx=m.x-e.p.x,dy=m.y-e.p.y;let v;if(wallU){const al=dx*wallU.x+dy*wallU.y,pp=Math.abs(dx*wallU.y-dy*wallU.x);if(pp>R.hh*2+60)continue;v={x:wallU.x*al,y:wallU.y*al}}else v={x:dx,y:dy};const d=Math.hypot(v.x,v.y);if(d<thr&&(!best||d<best.d))best={d,v,p:m}}
   if(best){o.x=r1(o.x+best.v.x);o.y=r1(o.y+best.v.y)}return best}
 function setRef(st,o,k){o.ref=k;refDef[st]=k;commit();render();renderQC();toast(k==='c'?'Referencia: el centro':'Punto de referencia elegido. Se mueve y se mide desde ahí')}
-function refMove(st,o,i,to){const R=refPts(st,o);if(!R)return;const e=refOf(R,o),D=refDirs(R)[i];if(!D)return;
+function refMove(st,o,i,to){const R=refPts(st,o);if(!R)return;const e=refOf(R,o),D=refDirs(R)[i];if(!D)return;const cmp=compAt(e.p);
   if(st==='opening'){const g=R.g,sgn=i===0?1:-1;let ds;if(to){const h=opHit(R,e,sgn);if(h==null){toast('No hay ningún muro en esa dirección');return}ds=sgn*(h-refMv)}else ds=sgn*refMv;const np=g.pos+ds,cl=clamp(np,g.w/2,g.L-g.w/2);o.pos=Math.round(cl*10)/10;
     if(Math.abs(cl-np)>.5)toast('No entra: quedó al final de ese muro');else toast(to?`Quedó a ${fm(refMv)} del muro`:`Movida ${fm(refMv)}`)}
-  else{let k;if(to){const h=refRay(e.p,D);if(h==null){toast('No hay ningún muro en esa dirección');return}k=h-refMv}else k=refMv;o.x=r1(o.x+D.x*k);o.y=r1(o.y+D.y*k);toast(to?`Quedó a ${fm(refMv)} del muro`:`Movido ${fm(refMv)}`)}
+  else{let k;if(to){const h=refRay(e.p,D,cmp);if(h==null){toast('No hay ningún muro en esa dirección');return}k=h-refMv}else k=refMv;o.x=r1(o.x+D.x*k);o.y=r1(o.y+D.y*k);toast(to?`Quedó a ${fm(refMv)} del muro`:`Movido ${fm(refMv)}`)}
   commit();render();renderQC();renderRight()}
 function refHit(w){if(tool!=='select'||!sel||msel.length||(sel.t!=='opening'&&sel.t!=='item'))return null;const o=selObj();if(!o)return null;const R=refPts(sel.t,o);if(!R||R.pts.length<2)return null;
   let best=null;for(const e of R.pts){const d=dist(w,e.p);if(d<px(coarse()?16:11)&&(!best||d<best.d))best={d,e}}return best?{t:'refpt',id:o.id,st:sel.t,k:best.e.k}:null}
 function refSVG(){if(tool!=='select'||!sel||msel.length||(sel.t!=='opening'&&sel.t!=='item'))return '';const o=selObj();if(!o)return '';const R=refPts(sel.t,o);if(!R)return '';const e=refOf(R,o);let h='';const C='#dc2626';
   // cotas desde el punto de referencia hasta los muros
-  const dims=[];let off={x:0,y:0};if(sel.t==='opening'){const g=R.g;let sd=e.f;if(!sd){const q={x:g.c.x+R.n.x*(R.hh+5),y:g.c.y+R.n.y*(R.hh+5)};sd=pip(q,g.r.pts)?1:-1}const k=(g.t/2-Math.abs(e.f)*g.t/2)+px(24);off={x:R.n.x*sd*k,y:R.n.y*sd*k};for(const sgn of[1,-1]){const d=opHit(R,e,sgn);if(d!=null)dims.push({d,v:{x:R.u.x*sgn,y:R.u.y*sgn}})}}else refDirs(R).forEach(v=>{const d=refRay(e.p,v);if(d!=null)dims.push({d,v})});
+  const dims=[];let off={x:0,y:0};if(sel.t==='opening'){const g=R.g;let sd=e.f;if(!sd){const q={x:g.c.x+R.n.x*(R.hh+5),y:g.c.y+R.n.y*(R.hh+5)};sd=pip(q,g.r.pts)?1:-1}const k=(g.t/2-Math.abs(e.f)*g.t/2)+px(24);off={x:R.n.x*sd*k,y:R.n.y*sd*k};for(const sgn of[1,-1]){const d=opHit(R,e,sgn);if(d!=null)dims.push({d,v:{x:R.u.x*sgn,y:R.u.y*sgn}})}}else{const cmp=compAt(e.p);refDirs(R).forEach(v=>{const d=refRay(e.p,v,cmp);if(d!=null)dims.push({d,v})});}
   const P0={x:e.p.x+off.x,y:e.p.y+off.y};if(off.x||off.y)h+=`<line x1="${e.p.x}" y1="${e.p.y}" x2="${P0.x}" y2="${P0.y}" stroke="${C}" stroke-width="${px(1)}" stroke-dasharray="${px(3)} ${px(2)}"/>`;
   for(const{d,v}of dims){if(d<1||d>3000)continue;const b={x:P0.x+v.x*d,y:P0.y+v.y*d},nx=-v.y,ny=v.x,tk=px(5);
     h+=`<line x1="${P0.x}" y1="${P0.y}" x2="${b.x}" y2="${b.y}" stroke="${C}" stroke-width="${px(1.2)}" stroke-dasharray="${px(4)} ${px(3)}"/><line x1="${b.x-nx*tk}" y1="${b.y-ny*tk}" x2="${b.x+nx*tk}" y2="${b.y+ny*tk}" stroke="${C}" stroke-width="${px(1.6)}"/>`;
