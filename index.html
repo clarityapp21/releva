@@ -1836,6 +1836,8 @@ const toW=p=>({x:(p.x-view.x)/view.s,y:(p.y-view.y)/view.s});
 let rq=0;const reqRender=()=>{if(rq)return;rq=requestAnimationFrame(()=>{rq=0;render();renderOverlay()})};
 svg.addEventListener('pointerdown',e=>{$('#menu').classList.add('hidden');if(mobile())document.body.classList.remove('lp-open');
   try{svg.setPointerCapture(e.pointerId)}catch(_){}
+  // un toque viejo que nunca se soltó no puede quedar trabado como si fuera un segundo dedo
+  if(e.isPrimary||e.pointerType==='mouse'){ptrs.clear();if(gesture&&gesture.mode==='pinch')gesture=null}
   const sp=loc(e);ptrs.set(e.pointerId,sp);
   if(ptrs.size===2){if(gesture){clearTimeout(gesture.timer);if(gesture.mode==='drag'&&gesture.moved){commit();renderRight()}}const[a,b]=[...ptrs.values()];gesture={mode:'pinch',d0:dist(a,b),m0:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},v0:{...view}};return}
   if(ptrs.size>2)return;
@@ -1896,7 +1898,9 @@ function endPtr(e,cancel){ptrs.delete(e.pointerId);if(!gesture)return;clearTimeo
   else if(g.mode==='perpslide'){if(!g.moved)tap(g.w0);else{renderOverlay();renderDraftBar()}}
   else if(g.mode==='frect'){const F0=g.fs.faces[0];let bb=g.b&&g.moved?g.b:null;if(!bb&&F0){let u=F0.u;if(g.fs.faces[1]){const G=g.fs.faces[1];if((G.n.x*u.x+G.n.y*u.y)<0)u={x:-u.x,y:-u.y}}bb={x:g.fs.p.x+u.x*100+F0.n.x,y:g.fs.p.y+u.y*100+F0.n.y}}const R=bb?furnRect(g.fs,bb,sub.lines):null;if(R)addFurnRect(R,sub.lines);else toast('Tocá el rincón o la pared donde arranca y arrastrá hasta el tamaño');renderOverlay()}
   else if(g.mode==='rect'){if(g.b){const a=g.a,b=g.b,w=Math.abs(a.x-b.x),h=Math.abs(a.y-b.y);if(w>=50&&h>=50)addRect(Math.min(a.x,b.x),Math.min(a.y,b.y),w,h);else toast('Arrastrá para marcar el ambiente')}else toast('Arrastrá para marcar el ambiente');renderOverlay()}}
-svg.addEventListener('pointerup',e=>endPtr(e,false));svg.addEventListener('pointercancel',e=>endPtr(e,true));
+svg.addEventListener('pointerup',e=>endPtr(e,false));
+window.addEventListener('pointerup',e=>{if(ptrs.has(e.pointerId)&&!svg.contains(e.target))endPtr(e,false)});svg.addEventListener('lostpointercapture',e=>{if(ptrs.has(e.pointerId))endPtr(e,true)});
+window.addEventListener('error',e=>{try{toast('Error: '+(e.message||'')+' (línea '+(e.lineno||'?')+')')}catch(_){}});svg.addEventListener('pointercancel',e=>endPtr(e,true));
 svg.addEventListener('contextmenu',e=>e.preventDefault());
 svg.addEventListener('dblclick',()=>{if(!draft)return;if(draft.kind==='room'&&draft.pts.length>=3)closeRoom();else if(draft.kind==='line')finishLine();else if(draft.kind==='furn')finishFurn();else if(draft.kind==='stair')finishStairPath()});
 svg.addEventListener('wheel',e=>{e.preventDefault();zoomAt(loc(e),Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)))},{passive:false});
