@@ -417,7 +417,7 @@ let view={x:0,y:0,s:.6},tool='room';
 let openG={};let sub={lines:'floor',stairs:'tramos',room:'pts',floor:'walls',stair:'recta',open:'p80',elec:{k:'item',key:'toma'},sanit:{k:'item',key:'inodoro'},mueb:{k:'item',key:'cama2'},gas:{k:'item',key:'cocina'},estr:{k:'wall',key:null}};
 let sel=null,draft=null,cursor=null,gesture=null,orthoOn=true,tab='editar',dropPrev=null,markers=[];
 let undoS=[],redoS=[],lastSnap='';const newIds=new Set();let W=800,H=600;
-function blank(){return attach({meta:{name:'Relevamiento sin nombre',addr:'',rules:{strictWater:false},wallDef:15},rooms:[],openings:[],items:[],lines:[],cols:[],beams:[],stairs:[]})}
+function blank(){return attach({meta:{name:'Relevamiento sin nombre',addr:'',rules:{strictWater:false},wallDef:20},rooms:[],openings:[],items:[],lines:[],cols:[],beams:[],stairs:[]})}
 function curP(st){st=st||S;return st.plantas.find(p=>p.id===st.meta.cur)||st.plantas[0]}
 function attach(st){if(!st.plantas){const p={id:'pb',name:'Planta baja',elev:0};PKEYS.forEach(k=>{p[k]=st[k]||[];delete st[k]});st.plantas=[p];st.meta.cur='pb'}
   st.plantas.forEach(p=>PKEYS.forEach(k=>{p[k]=p[k]||[]}));if(!st.plantas.find(p=>p.id===st.meta.cur))st.meta.cur=st.plantas[0].id;
@@ -448,7 +448,7 @@ const getRoom=id=>S.rooms.find(r=>r.id===id);
 const ARR={room:'rooms',wall:'rooms',opening:'openings',item:'items',line:'lines',col:'cols',beam:'beams',stair:'stairs',mark:'marks',furn:'furn'};
 let markAsst=null,joinAsst=null,copyPick=null,msel=[];const HOLDMS=1000;
 function selObj(){if(!sel)return null;const a=S[ARR[sel.t]];return a?a.find(o=>o.id===sel.id)||null:null}
-function wallThick(r,i){const w=r.ws&&r.ws[i];if(r.nowall||(w&&w.none))return 0;return(w&&w.esp)||r.wall||15}
+function wallThick(r,i){const w=r.ws&&r.ws[i];if(r.nowall||(w&&w.none))return 0;return Math.max(10,(w&&w.esp)||r.wall||15)}
 const rn=r=>r?(r.name||(r.open?'Muro suelto':r.nowall?(r.cover==='descubierta'?'Piso sin nombre':'Cubierto sin nombre'):'Ambiente sin nombre')):'';
 const fNiv=n=>(n>0?'+':n<0?'−':'±')+nf(Math.abs(n||0)/100);
 function openingGeom(o){const r=getRoom(o.room);if(!r)return null;const n=r.pts.length;if(o.seg>=n)return null;const a=r.pts[o.seg],b=r.pts[(o.seg+1)%n],L=dist(a,b);if(L<1)return null;const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L};
@@ -1019,7 +1019,7 @@ function render(){LB=[];
   if(layers.muros){h+=`<g${op('muros')}>`;const _k=view.s+'|'+st+'|'+[...newIds].join()+'|'+JSON.stringify(S.rooms);if(_WC.k===_k)h+=_WC.h;else{const _h0=h.length;
     const rooms=[...S.rooms].sort((a,b)=>(a.cover==='descubierta'?0:1)-(b.cover==='descubierta'?0:1));
     for(const r of rooms){if(r.open)continue;const cvd=r.nowall&&r.cover!=='descubierta',fill=r.nowall?(cvd?'url(#hSemi)':'url(#hFl)'):r.cover==='semicubierta'?'url(#hSemi)':r.cover==='descubierta'?'#f6f6f4':'#fff';h+=`<polygon points="${r.pts.map(p=>p.x+','+p.y).join(' ')}" fill="${fill}" ${r.nowall?(cvd?`stroke="#374151" stroke-width="${px(1.6)}" stroke-dasharray="${px(10)} ${px(4)}"`:`stroke="#6b7280" stroke-width="${px(1.1)}"`):''} class="${newIds.has(r.id)?'fadein':''}"/>`}
-    for(const r of rooms){if(r.nowall)continue;const n=r.pts.length;for(let i=0;i<segN(r);i++){const a=r.pts[i],b=r.pts[(i+1)%n],w=getWs(r,i),t=wallThick(r,i);if(!t){h+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#6b7280" stroke-width="${px(1.1)}"/>`;continue}
+    for(const r of rooms){if(r.nowall)continue;const n=r.pts.length;for(let i=0;i<segN(r);i++){const a=r.pts[i],b=r.pts[(i+1)%n],w=getWs(r,i),t=wallThick(r,i);if(!t){if(!onWall(a,b))h+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#9ca3af" stroke-width="${px(1)}" stroke-dasharray="${px(5)} ${px(4)}"/>`;continue}
       let col=w.est==='portante'?'url(#hP)':w.est==='noportante'?'#111111':r.cover==='descubierta'?'#b4b8be':'#9ca3af';
       h+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${col}" stroke-width="${t}" stroke-linecap="square" class="${newIds.has(r.id)?'fadein':''}"/>`}}
     _WC={k:_k,h:h.slice(_h0)}}h+='</g>';
@@ -1040,21 +1040,24 @@ function render(){LB=[];
       h+=`<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="#9ca3af" stroke-width="${px(.8)}"/>${tick(A)}${tick(B)}`;const tw=nf(L/100).length*5.6+6,vert=Math.abs(Math.abs(ang)-90)<45;
       LBadd(mx,my,vert?12:tw,vert?tw:12,60,`<text x="${mx}" y="${my}" transform="rotate(${ang} ${mx} ${my})" text-anchor="middle" dominant-baseline="central" font-size="${px(9.5)}" fill="${col||'#6b7280'}" stroke="#fbfbfa" stroke-width="${px(3)}" paint-order="stroke">${nf(L/100)}</text>`)};
     const NET=wallNet();
-    // la cota interior se corta donde la cruza otro muro
-    const cuts=(r,i,a,b)=>{const L=dist(a,b),u={x:(b.x-a.x)/L,y:(b.y-a.y)/L},C=[];for(const w of NET){if(w.r===r&&w.i===i)continue;const den=u.x*w.u.y-u.y*w.u.x;if(Math.abs(den)<.2)continue;
-        const dx=w.a.x-a.x,dy=w.a.y-a.y,sp=(dx*w.u.y-dy*w.u.x)/den,tw=(dx*u.y-dy*u.x)/den;if(tw<-w.t/2-1||tw>w.L+w.t/2+1)continue;const hw=w.t/2/Math.abs(den);if(sp-hw<=1||sp+hw>=L-1)continue;C.push([sp-hw,sp+hw])}
-      C.sort((x,y)=>x[0]-y[0]);const P=[];let s0=0;for(const[c0,c1]of C){if(c0>s0+1)P.push([s0,c0]);s0=Math.max(s0,c1)}if(L>s0+1)P.push([s0,L]);return P.map(([x,y])=>[{x:a.x+u.x*x,y:a.y+u.y*x},{x:a.x+u.x*y,y:a.y+u.y*y}])};
+    // tramos de una cota interior: sobre una línea 3 cm adentro de la cara, desde una cara de muro hasta la siguiente (corta donde cruza un muro)
+    const facePieces=(r,a,u,nin,L)=>{const O={x:a.x+nin.x*3,y:a.y+nin.y*3},n=r.pts.length,X=[];
+      for(let k=0;k<n;k++){const p=r.pts[k],q=r.pts[(k+1)%n],e={x:q.x-p.x,y:q.y-p.y},den=u.x*e.y-u.y*e.x;if(Math.abs(den)<1e-9)continue;const t=((p.x-O.x)*e.y-(p.y-O.y)*e.x)/den,v=((p.x-O.x)*u.y-(p.y-O.y)*u.x)/den;if(v>=-1e-6&&v<1-1e-6)X.push(t)}
+      X.sort((x,y)=>x-y);let c0=0,c1=L;for(let k=0;k+1<X.length;k+=2)if(X[k]<=L/2&&X[k+1]>=L/2){c0=X[k];c1=X[k+1]}
+      const I=[];for(const w of NET){const ox=O.x-w.a.x,oy=O.y-w.a.y;let lo=-1e9,hi=1e9;const slab=(p0,dp,mn,mx)=>{if(Math.abs(dp)<1e-9){if(p0<mn||p0>mx){lo=1;hi=0}}else{let t1=(mn-p0)/dp,t2=(mx-p0)/dp;if(t1>t2)[t1,t2]=[t2,t1];lo=Math.max(lo,t1);hi=Math.min(hi,t2)}};
+        slab(ox*w.u.x+oy*w.u.y,u.x*w.u.x+u.y*w.u.y,0,w.L);slab(ox*w.n.x+oy*w.n.y,u.x*w.n.x+u.y*w.n.y,-w.t/2,w.t/2);if(hi>lo+.1)I.push([lo,hi])}
+      I.sort((x,y)=>x[0]-y[0]);const P=[];let s0=c0;for(const[l,h2]of I){if(h2<=s0)continue;if(l>=c1)break;if(l>s0)P.push([s0,Math.min(l,c1)]);s0=Math.max(s0,h2)}if(c1>s0)P.push([s0,c1]);return P.filter(([x,y])=>y-x>=10)};
     const CRs=S.rooms.filter(x=>!x.open&&!x.nowall);
-    // cota completa por afuera: tramos seguidos en línea recta que dan al exterior van en una sola cota
-    for(const r of CRs){const n=r.pts.length,N=segN(r),sg=area(r.pts)>0?1:-1,OUT=offsetPoly(r.pts,k=>-wallThick(r,k)/2),ext=[];
-      for(let i=0;i<N;i++){const t=wallThick(r,i),pa=r.pts[i],pb=r.pts[(i+1)%n],L=dist(pa,pb);if(!t||L<1){ext.push(false);continue}const u={x:(pb.x-pa.x)/L,y:(pb.y-pa.y)/L},on={x:u.y*sg,y:-u.x*sg},m={x:(pa.x+pb.x)/2,y:(pa.y+pb.y)/2},e=t/2+6;ext.push(!CRs.some(x=>x!==r&&pip({x:m.x+on.x*e,y:m.y+on.y*e},x.pts)))}
-      const straight=k=>{const P=r.pts[(k-1+n)%n],V=r.pts[k],Nx=r.pts[(k+1)%n],L1=dist(P,V),L2=dist(V,Nx);if(L1<.5||L2<.5)return false;return Math.abs(((V.x-P.x)*(Nx.y-V.y)-(V.y-P.y)*(Nx.x-V.x))/(L1*L2))<.02&&((V.x-P.x)*(Nx.x-V.x)+(V.y-P.y)*(Nx.y-V.y))>0};
-      const done=new Set();for(let i=0;i<N;i++){if(!ext[i]||done.has(i))continue;let st=i;while(ext[(st-1+N)%N]&&straight(st)&&!done.has((st-1+N)%N)&&(st-1+N)%N!==i)st=(st-1+N)%N;let en=st;done.add(st);while(ext[(en+1)%N]&&straight((en+1)%n)&&(en+1)%N!==st){en=(en+1)%N;done.add(en)}
-        const oa=OUT[st],ob=OUT[(en+1)%n],k=[oa,ob].map(p=>Math.round(p.x)+':'+Math.round(p.y)).sort().join('|');if(seen.has(k))continue;seen.add(k);const pa=r.pts[st],pb=r.pts[(st+1)%n],L=dist(pa,pb)||1;dimL(oa,ob,(pb.y-pa.y)/L*sg,-(pb.x-pa.x)/L*sg,px(16))}}
+    // cota completa por afuera: una por cada fachada (caras exteriores en una misma línea, de esquina a esquina)
+    {const F=[];for(const w of NET)for(const sg of[1,-1]){const nn={x:w.n.x*sg,y:w.n.y*sg},m={x:(w.a.x+w.b.x)/2+nn.x*(w.t/2+6),y:(w.a.y+w.b.y)/2+nn.y*(w.t/2+6)};if(CRs.some(x=>pip(m,x.pts)))continue;const ex=w.ext[sg]||[0,0];
+        F.push({A:{x:w.a.x+nn.x*w.t/2-w.u.x*ex[0],y:w.a.y+nn.y*w.t/2-w.u.y*ex[0]},B:{x:w.b.x+nn.x*w.t/2+w.u.x*ex[1],y:w.b.y+nn.y*w.t/2+w.u.y*ex[1]},nn})}
+      const used=new Set();for(let i=0;i<F.length;i++){if(used.has(i))continue;const f=F[i],base=f.A;let hi=dist(f.A,f.B),lo=0;if(hi<1)continue;const u={x:(f.B.x-f.A.x)/hi,y:(f.B.y-f.A.y)/hi};used.add(i);
+        let ch=true;while(ch){ch=false;for(let j=0;j<F.length;j++){if(used.has(j))continue;const g=F[j];if(g.nn.x*f.nn.x+g.nn.y*f.nn.y<.99)continue;const off=p=>(p.x-base.x)*f.nn.x+(p.y-base.y)*f.nn.y;if(Math.abs(off(g.A))>1||Math.abs(off(g.B))>1)continue;const sA=(g.A.x-base.x)*u.x+(g.A.y-base.y)*u.y,sB=(g.B.x-base.x)*u.x+(g.B.y-base.y)*u.y,g0=Math.min(sA,sB),g1=Math.max(sA,sB);if(g0>hi+1||g1<lo-1)continue;lo=Math.min(lo,g0);hi=Math.max(hi,g1);used.add(j);ch=true}}
+        const P=t=>({x:base.x+u.x*t,y:base.y+u.y*t});dimL(P(lo),P(hi),f.nn.x,f.nn.y,px(16))}}
     for(const r of S.rooms){const n=r.pts.length,inn=!r.open&&!r.nowall,Q=inn?innerPoly(r):r.pts,sg=area(r.pts)>0?1:-1;
       for(let i=0;i<segN(r);i++){const a=Q[i],b=Q[(i+1)%n],L=dist(a,b);if(L<20)continue;if(!inn){const k=[a,b].map(p=>Math.round(p.x)+':'+Math.round(p.y)).sort().join('|');if(seen.has(k))continue;seen.add(k)}
         const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L};let nx=u.y,ny=-u.x;
-        if(inn){nx=-u.y*sg;ny=u.x*sg;for(const[A,B]of cuts(r,i,a,b))dimL(A,B,nx,ny,px(13));
+        if(inn){nx=-u.y*sg;ny=u.x*sg;for(const[s0,s1]of facePieces(r,a,u,{x:nx,y:ny},L))dimL({x:a.x+u.x*s0,y:a.y+u.y*s0},{x:a.x+u.x*s1,y:a.y+u.y*s1},nx,ny,px(13));
           // lado que da afuera: la cota completa va por afuera
           continue}
         const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},e=wallThick(r,i)/2+6,in1=CRs.some(x=>pip({x:m.x+nx*e,y:m.y+ny*e},x.pts)),in2=CRs.some(x=>pip({x:m.x-nx*e,y:m.y-ny*e},x.pts));
@@ -1336,7 +1339,7 @@ function roomFaceSnap(w){const tol=Math.max(12,px(24)),C=faceCands(w,tol);if(!C.
   if(best){snapInfo={k:'rincon',x:best.x,y:best.y};return{x:best.x,y:best.y,k:'rincon'}}
   const F=C[0];if(F.gap<tol){snapInfo={k:'cara',x:F.fp.x,y:F.fp.y};return{x:r1(F.fp.x),y:r1(F.fp.y),k:'cara'}}return null}
 function closeRoom(){let pts=draft.pts.map(p=>({x:p.x,y:p.y}));if(pts.length<3||Math.abs(area(pts))<100){toast('Necesitás al menos 3 esquinas');return}
-  const fl=draft.floor||sub.floor!=='walls',cv=draft.floor?sub.lines==='covered':sub.floor==='covered';if(!fl){const t=(S.meta.wallDef||20)/2;pts=offsetPoly(pts,()=>-t).map(q=>({x:r1(q.x),y:r1(q.y)}))}const r={id:uid(),name:'',pts,cover:cv?'semicubierta':fl?'descubierta':'cubierta',nowall:fl,height:260,wall:S.meta.wallDef||20,nota:''};S.rooms.push(r);const uf=fl?0:autoUnify(r);flash(r.id);draft=null;cursor=null;sel=null;renderRight();commit();setTool('select');renderAll();toast(`Espacio cerrado · ${fm2(innerArea(r))} interior${uf?' · se unificó con '+uf+' muro'+(uf>1?'s':'')+' que se pisaba'+(uf>1?'n':''):''} · el nombre se pone con Nombrar`)}
+  const fl=draft.floor||sub.floor!=='walls',cv=draft.floor?sub.lines==='covered':sub.floor==='covered';if(!fl){const t=(S.meta.wallDef||20)/2;pts=offsetPoly(pts,()=>-t).map(q=>({x:r1(q.x),y:r1(q.y)}))}const r={id:uid(),name:'',pts,cover:cv?'semicubierta':fl?'descubierta':'cubierta',nowall:fl,height:260,wall:S.meta.wallDef||20,nota:''};S.rooms.push(r);const uf=fl?0:autoUnify(r);cleanSlivers();flash(r.id);draft=null;cursor=null;sel=null;renderRight();commit();setTool('select');renderAll();toast(`Espacio cerrado · ${fm2(innerArea(r))} interior${uf?' · se unificó con '+uf+' muro'+(uf>1?'s':'')+' que se pisaba'+(uf>1?'n':''):''} · el nombre se pone con Nombrar`)}
 function addRect(x,y,w,h,name,cover){const fl=sub.floor!=='walls',cv=sub.floor==='covered';if(!fl&&!name){const t=(S.meta.wallDef||20)/2;x-=t;y-=t;w+=2*t;h+=2*t}const r={id:uid(),name:name||'',pts:[{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}],cover:cover||(cv?'semicubierta':fl?'descubierta':'cubierta'),nowall:fl,height:260,wall:S.meta.wallDef||20,nota:''};
   S.rooms.push(r);flash(r.id);sel=null;renderRight();commit();renderAll();toast(`${rn(r)} · ${fm2(innerArea(r))}`);return r}
 function finishLine(){if(!draft||draft.pts.length<2)return;const T=LINES[draft.type];const L={id:uid(),type:draft.type,pts:draft.pts.map(q=>({x:q.x,y:q.y})),mat:T.mat,diam:T.d,vert:0,inst:T.inst||'Embutida',estado:'',nota:''};
@@ -1646,6 +1649,11 @@ function alignWalls(E){const len=e=>dist(e.r.pts[e.i],e.r.pts[(e.i+1)%e.r.pts.le
   const pts=[];E.forEach(e=>{const n=e.r.pts.length;pts.push({...e.r.pts[e.i]},{...e.r.pts[(e.i+1)%n]})});let c=0;
   for(const p0 of pts){const d=(p0.x-o.x)*nn.x+(p0.y-o.y)*nn.y;if(Math.abs(d)<.05)continue;const to={x:r1(p0.x-nn.x*d),y:r1(p0.y-nn.y*d)};for(const x of S.rooms)x.pts.forEach((p,j)=>{if(dist(p,p0)<3)x.pts[j]={...to}});c++}
   const t0=wallThick(base.r,base.i);E.forEach(e=>{if(wallThick(e.r,e.i)&&wallThick(e.r,e.i)!==t0)setWs(e.r,e.i,{esp:t0})});return true}
+// ¿el tramo a-b queda sobre un muro de verdad?
+function onWall(a,b){const L=dist(a,b)||1;for(const w of wallNet()){if(Math.abs((b.x-a.x)/L*w.u.y-(b.y-a.y)/L*w.u.x)>.05)continue;const d=p=>Math.abs((p.x-w.a.x)*w.n.x+(p.y-w.a.y)*w.n.y),s=p=>(p.x-w.a.x)*w.u.x+(p.y-w.a.y)*w.u.y;if(d(a)>w.t/2+1||d(b)>w.t/2+1)continue;const s1=s(a),s2=s(b);if(Math.min(s1,s2)>=-w.t/2-1&&Math.max(s1,s2)<=w.L+w.t/2+1)return true}return false}
+// ambientes que son solo una tirita entre muros superpuestos (ancho promedio < 15 cm, sin nombre): se borran
+function cleanSlivers(){const per=r=>r.pts.reduce((m,p,k)=>m+dist(p,r.pts[(k+1)%r.pts.length]),0);const bad=S.rooms.filter(r=>!r.open&&!r.name&&r.pts.length>2&&Math.abs(area(r.pts))/(per(r)/2||1)<15);if(!bad.length)return 0;const ids=new Set(bad.map(r=>r.id));
+  S.rooms=S.rooms.filter(r=>!ids.has(r.id));S.openings=S.openings.filter(o=>!ids.has(o.room));S.marks=S.marks.filter(m=>m.free||!ids.has(m.room));return bad.length}
 /* ===== unificar muros superpuestos ===== */
 // lleva las puntas de los muros que se pisan con `base` sobre el eje de `base` (quedan como un solo muro compartido)
 function overlapWalls(r0,i0,only){const n0=r0.pts.length,a=r0.pts[i0],b=r0.pts[(i0+1)%n0],L=dist(a,b);if(L<1)return[];const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L},nn={x:-u.y,y:u.x},t0=wallThick(r0,i0)||0,out=[];
@@ -1656,7 +1664,7 @@ function unifyWalls(base,others){const{r:r0,i:i0}=base,n0=r0.pts.length,a=r0.pts
   const moveV=(p0,to)=>{for(const x of S.rooms)x.pts.forEach((p,j)=>{if(dist(p,p0)<.8)x.pts[j]={x:r1(to.x),y:r1(to.y)}})};
   for(const w of others){const n=w.r.pts.length,P=[{...w.r.pts[w.i]},{...w.r.pts[(w.i+1)%n]}];for(const p of P){const d=(p.x-a.x)*nn.x+(p.y-a.y)*nn.y;if(Math.abs(d)>.05)moveV(p,{x:p.x-nn.x*d,y:p.y-nn.y*d})}if(t0&&wallThick(w.r,w.i))setWs(w.r,w.i,{esp:t0});k++}
   // ambientes que quedaron sin superficie (las tiritas entre los muros superpuestos)
-  const before=S.rooms.length;S.rooms=S.rooms.filter(r=>r.pts.length<3||Math.abs(area(r.pts))>=150||r.name);const gone=before-S.rooms.length;if(gone)S.openings=S.openings.filter(o=>getRoom(o.room));
+  const before=S.rooms.length;S.rooms=S.rooms.filter(r=>r.pts.length<3||Math.abs(area(r.pts))>=150||r.name);const gone=before-S.rooms.length+cleanSlivers();if(gone)S.openings=S.openings.filter(o=>getRoom(o.room));
   return{k,gone}}
 function joinCollinear(E){const SG=E.map(e=>[{...e.r.pts[e.i]},{...e.r.pts[(e.i+1)%e.r.pts.length]}]),same=(A,B)=>(dist(A[0],B[0])<1&&dist(A[1],B[1])<1)||(dist(A[0],B[1])<1&&dist(A[1],B[0])<1);let c=0,blocked=0,go=true;
   while(go){go=false;for(const r of S.rooms){const n=r.pts.length;for(let k=0;k<n&&!go;k++){const P=r.pts[(k-1+n)%n],V=r.pts[k],N=r.pts[(k+1)%n],a=SG.findIndex(z=>same(z,[P,V])),b=SG.findIndex(z=>same(z,[V,N]));if(a<0||b<0)continue;
@@ -2510,7 +2518,7 @@ document.addEventListener('keydown',e=>{const inF=/INPUT|TEXTAREA|SELECT/.test(d
   else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='v'){e.preventDefault();startPaste()}
   else if((e.key==='Delete'||e.key==='Backspace')&&msel.length){e.preventDefault();mDelete()}
   else if((e.key==='Delete'||e.key==='Backspace')&&sel){e.preventDefault();delSel()}});
-function syncMeta(){$('#pname').value=S.meta.name;$('#paddr').value=S.meta.addr||''}
+function syncMeta(){$('#pname').value=S.meta.name;$('#paddr').value=S.meta.addr||'';if(S.meta.wallDef===15)S.meta.wallDef=20;if(!S.meta.clean97){S.meta.clean97=1;let c=0;const cp=S.meta.cur;for(const pl of S.plantas){S.meta.cur=pl.id;c+=cleanSlivers()}S.meta.cur=cp;if(c)setTimeout(()=>{commit();renderAll();toast(`Se borraron ${c} espacios que eran solo una tirita entre muros superpuestos`)},300)}}
 $('#pname').addEventListener('change',e=>{S.meta.name=e.target.value||'Relevamiento sin nombre';commit()});$('#paddr').addEventListener('change',e=>{S.meta.addr=e.target.value;commit()});
 let tT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2300)}
 
@@ -2583,7 +2591,7 @@ $('#qcard').addEventListener('click',e=>{const b=e.target.closest('[data-q]');if
   if(a==='mx'){clearMulti();return}
   if(a==='vsolo'){S.meta.vertSolo=v==='1';commit();renderQC();toast(S.meta.vertSolo?'Las puntas se mueven sin arrastrar los otros muros que llegan ahí':'Las puntas arrastran a los muros que llegan ahí');return}
   if(a==='wuni'||a==='muni'){unifySel();return}
-  if(a==='heal'){const c=healWalls();if(!c){toast('No hay nada para enderezar: las puntas ya están unidas y los muros derechos');return}commit();sel=null;msel=[];hideQC();renderAll();renderRight();toast(`Listo: se acomodaron ${c} punto${c>1?'s':''}. Si algo no te gusta, deshacé`);return}
+  if(a==='heal'){const c=healWalls()+cleanSlivers();if(!c){toast('No hay nada para enderezar: las puntas ya están unidas y los muros derechos');return}commit();sel=null;msel=[];hideQC();renderAll();renderRight();toast(`Listo: se acomodaron ${c} punto${c>1?'s':''}. Si algo no te gusta, deshacé`);return}
   if(a==='wcons'&&sel&&sel.t==='wall'){const r=getRoom(sel.id);if(r){const L=consWalls([{r,i:sel.i}]);selWalls(L,'');toast(`${msel.length} muros de esta construcción`)}return}
   if(a==='wmulti'&&sel&&sel.t==='wall'){msel=[{t:'wall',id:sel.id,i:sel.i}];sel=null;qcOn=false;renderRight();render();renderOverlay();renderQC();toast('Tocá los otros muros que querés sumar');return}
   if(a==='mwmv'){const v2=pm($('#qcMv').value);if(v2==null||v2<=0){toast('Escribí cuántos metros');return}wallMv=Math.round(v2*1000)/10;const E=wallEntries();if(!E.length)return;const{nx,ny}=wallNormal(E[0].r,E[0].i),k=(+v)*wallMv;const keep=E.map(e=>({a:{...e.r.pts[e.i]},b:{...e.r.pts[(e.i+1)%e.r.pts.length]}}));moveWallsBy(E,{x:nx*k,y:ny*k});reselWalls(keep,{x:nx*k,y:ny*k});toast(`${E.length>1?E.length+' muros movidos':'Muro movido'} ${fm(Math.abs(k))}`);return}
