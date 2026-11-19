@@ -1049,15 +1049,19 @@ function render(){LB=[];
       I.sort((x,y)=>x[0]-y[0]);const P=[];let s0=c0;for(const[l,h2]of I){if(h2<=s0)continue;if(l>=c1)break;if(l>s0)P.push([s0,Math.min(l,c1)]);s0=Math.max(s0,h2)}if(c1>s0)P.push([s0,c1]);return P.filter(([x,y])=>y-x>=10)};
     const CRs=S.rooms.filter(x=>!x.open&&!x.nowall);
     // cota completa por afuera: una por cada fachada (caras exteriores en una misma línea, de esquina a esquina)
-    {const F=[];for(const w of NET)for(const sg of[1,-1]){const nn={x:w.n.x*sg,y:w.n.y*sg},m={x:(w.a.x+w.b.x)/2+nn.x*(w.t/2+6),y:(w.a.y+w.b.y)/2+nn.y*(w.t/2+6)};if(CRs.some(x=>pip(m,x.pts)))continue;const ex=w.ext[sg]||[0,0];
+    const faceIn=(w,nn)=>{for(const f of[.2,.5,.8]){const p={x:w.a.x+w.u.x*w.L*f+nn.x*(w.t/2+1),y:w.a.y+w.u.y*w.L*f+nn.y*(w.t/2+1)},h=refRay(p,nn,w.c);if(h!=null&&h<3000)return true}return false};
+    {const F=[];for(const w of NET)for(const sg of[1,-1]){const nn={x:w.n.x*sg,y:w.n.y*sg};if(faceIn(w,nn))continue;const ex=w.ext[sg]||[0,0];
         F.push({A:{x:w.a.x+nn.x*w.t/2-w.u.x*ex[0],y:w.a.y+nn.y*w.t/2-w.u.y*ex[0]},B:{x:w.b.x+nn.x*w.t/2+w.u.x*ex[1],y:w.b.y+nn.y*w.t/2+w.u.y*ex[1]},nn})}
       const used=new Set();for(let i=0;i<F.length;i++){if(used.has(i))continue;const f=F[i],base=f.A;let hi=dist(f.A,f.B),lo=0;if(hi<1)continue;const u={x:(f.B.x-f.A.x)/hi,y:(f.B.y-f.A.y)/hi};used.add(i);
         let far=0,ch=true;while(ch){ch=false;for(let j=0;j<F.length;j++){if(used.has(j))continue;const g=F[j];if(g.nn.x*f.nn.x+g.nn.y*f.nn.y<.99)continue;const off=p=>(p.x-base.x)*f.nn.x+(p.y-base.y)*f.nn.y;if(Math.abs(off(g.A))>12||Math.abs(off(g.B))>12)continue;far=Math.max(far,off(g.A),off(g.B));const sA=(g.A.x-base.x)*u.x+(g.A.y-base.y)*u.y,sB=(g.B.x-base.x)*u.x+(g.B.y-base.y)*u.y,g0=Math.min(sA,sB),g1=Math.max(sA,sB);if(g0>hi+1||g1<lo-1)continue;lo=Math.min(lo,g0);hi=Math.max(hi,g1);used.add(j);ch=true}}
         const P=t=>({x:base.x+u.x*t+f.nn.x*far,y:base.y+u.y*t+f.nn.y*far});dimL(P(lo),P(hi),f.nn.x,f.nn.y,px(16))}}
-    // cotas interiores: desde cada cara de muro que da a un ambiente, de cara a cara (no dependen de cómo esté dibujado el borde del ambiente)
-    {const IK=[];for(const w of NET)for(const sg of[1,-1]){const nn={x:w.n.x*sg,y:w.n.y*sg},a={x:w.a.x+nn.x*w.t/2,y:w.a.y+nn.y*w.t/2};for(const f of[.1,.3,.5,.7,.9]){const m={x:a.x+w.u.x*w.L*f+nn.x*6,y:a.y+w.u.y*w.L*f+nn.y*6},R=CRs.find(x=>pip(m,x.pts));if(!R)continue;
-        for(const[s0,s1]of facePieces(R,a,w.u,nn,w.L,w.L*f)){if(s1<-1||s0>w.L+1)continue;const A={x:a.x+w.u.x*s0,y:a.y+w.u.y*s0},B={x:a.x+w.u.x*s1,y:a.y+w.u.y*s1},c=A.x*nn.x+A.y*nn.y,sa=A.x*w.u.x+A.y*w.u.y,sb=B.x*w.u.x+B.y*w.u.y;
-          if(IK.some(q=>q.nn.x*nn.x+q.nn.y*nn.y>.99&&Math.abs(q.c-c)<12&&Math.abs(q.sa-sa)<6&&Math.abs(q.sb-sb)<6))continue;IK.push({nn,c,sa,sb});dimL(A,B,nn.x,nn.y,px(13))}}}}
+    // cotas interiores: desde cada cara de muro que tiene otro muro enfrente, de cara a cara (no dependen de cómo esté dibujado el ambiente)
+    {const freeAt=(a,u,nin,ref)=>{const O={x:a.x+nin.x*3,y:a.y+nin.y*3};let L0=-Infinity,H0=Infinity;for(const w of NET){const ox=O.x-w.a.x,oy=O.y-w.a.y;let lo=-1e9,hi=1e9;const slab=(p0,dp,mn,mx)=>{if(Math.abs(dp)<1e-9){if(p0<mn||p0>mx){lo=1;hi=0}}else{let t1=(mn-p0)/dp,t2=(mx-p0)/dp;if(t1>t2)[t1,t2]=[t2,t1];lo=Math.max(lo,t1);hi=Math.min(hi,t2)}};
+        slab(ox*w.u.x+oy*w.u.y,u.x*w.u.x+u.y*w.u.y,0,w.L);slab(ox*w.n.x+oy*w.n.y,u.x*w.n.x+u.y*w.n.y,-w.t/2,w.t/2);if(!(hi>lo+.1))continue;if(lo<=ref&&hi>=ref)return null;if(hi<=ref)L0=Math.max(L0,hi);if(lo>=ref)H0=Math.min(H0,lo)}
+        return isFinite(L0)&&isFinite(H0)&&H0-L0>=10&&H0-L0<3000?[L0,H0]:null};
+      const IK=[];for(const w of NET)for(const sg of[1,-1]){const nn={x:w.n.x*sg,y:w.n.y*sg};if(!faceIn(w,nn))continue;const a={x:w.a.x+nn.x*w.t/2,y:w.a.y+nn.y*w.t/2};
+        for(const f of[.05,.25,.5,.75,.95]){const pc=freeAt(a,w.u,nn,w.L*f);if(!pc)continue;const[s0,s1]=pc;const A={x:a.x+w.u.x*s0,y:a.y+w.u.y*s0},B={x:a.x+w.u.x*s1,y:a.y+w.u.y*s1},c=A.x*nn.x+A.y*nn.y,sa=A.x*w.u.x+A.y*w.u.y,sb=B.x*w.u.x+B.y*w.u.y;
+          if(IK.some(q=>q.nn.x*nn.x+q.nn.y*nn.y>.99&&Math.abs(q.c-c)<12&&Math.abs(Math.min(q.sa,q.sb)-Math.min(sa,sb))<6&&Math.abs(Math.max(q.sa,q.sb)-Math.max(sa,sb))<6))continue;IK.push({nn,c,sa,sb});dimL(A,B,nn.x,nn.y,px(13))}}}
     for(const r of S.rooms){const n=r.pts.length,inn=!r.open&&!r.nowall,Q=inn?innerPoly(r):r.pts,sg=area(r.pts)>0?1:-1;
       for(let i=0;i<segN(r);i++){const a=Q[i],b=Q[(i+1)%n],L=dist(a,b);if(L<20)continue;if(!inn){const k=[a,b].map(p=>Math.round(p.x)+':'+Math.round(p.y)).sort().join('|');if(seen.has(k))continue;seen.add(k)}
         const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L};let nx=u.y,ny=-u.x;
@@ -2007,9 +2011,12 @@ function zoomAt(p,f){const s=clamp(view.s*f,.04,5),w=toW(p);view={x:p.x-w.x*s,y:
 const drawKind=()=>tool==='stairs'?'stair':(tool==='lines'&&(sub.lines==='mesada'||sub.lines==='alacena'||sub.lines==='placar'))?'furn':(tool==='room'||tool==='lines')?'room':sub[tool].k==='beam'?'beam':'line';
 /* ===== mover y borrar muros ===== */
 // Mover muros: cada esquina afectada se recalcula como intersección de la línea movida con el muro que sale de ella
-function wallMoveCtx(list){const W=list.map(({r,i})=>{const n=r.pts.length,a={...r.pts[i]},b={...r.pts[(i+1)%n]},L=dist(a,b)||1;return{a,b,u:{x:(b.x-a.x)/L,y:(b.y-a.y)/L},n:{x:-(b.y-a.y)/L,y:(b.x-a.x)/L}}});
+function wallMoveCtx(list){const W=list.map(({r,i})=>{const n=r.pts.length,a={...r.pts[i]},b={...r.pts[(i+1)%n]},L=dist(a,b)||1;return{t:wallThick(r,i)||20,a,b,u:{x:(b.x-a.x)/L,y:(b.y-a.y)/L},n:{x:-(b.y-a.y)/L,y:(b.x-a.x)/L}}});
   const nodes=[],key=p=>nodes.find(q=>dist(q.o,p)<2);
   W.forEach((w,wi)=>{for(const x of S.rooms)x.pts.forEach((p,k)=>{if(segDist(p,w.a,w.b).d<2){let nd=key(p);if(!nd){nd={o:{x:p.x,y:p.y},refs:[],walls:new Set()};nodes.push(nd)}nd.walls.add(wi);if(!nd.refs.some(q=>q.r===x&&q.k===k))nd.refs.push({r:x,k})}})});
+  // lados de otros ambientes dibujados sobre el mismo muro pero corridos unos cm (dentro de su espesor): se mueven con él
+  W.forEach((w,wi)=>{const WL=dist(w.a,w.b),off=z=>(z.x-w.a.x)*w.n.x+(z.y-w.a.y)*w.n.y,sp=z=>(z.x-w.a.x)*w.u.x+(z.y-w.a.y)*w.u.y;for(const x of S.rooms){const n=x.pts.length;for(let k=0;k<segN(x);k++){const p=x.pts[k],q=x.pts[(k+1)%n],L=dist(p,q);if(L<1)continue;if(Math.abs((q.x-p.x)/L*w.u.y-(q.y-p.y)/L*w.u.x)>.05)continue;if(Math.abs(off(p))>w.t/2||Math.abs(off(q))>w.t/2)continue;if(Math.max(sp(p),sp(q))<-1||Math.min(sp(p),sp(q))>WL+1)continue;
+    for(const[z,kk]of[[p,k],[q,(k+1)%n]]){if(sp(z)<-w.t/2-1||sp(z)>WL+w.t/2+1)continue;let nd=key(z);if(!nd){nd={o:{x:z.x,y:z.y},refs:[],walls:new Set()};nodes.push(nd)}nd.walls.add(wi);if(!nd.refs.some(q2=>q2.r===x&&q2.k===kk))nd.refs.push({r:x,k:kk})}}}});
   // una esquina de otro ambiente que sigue en línea recta con el muro movido (sin ser parte de él) se queda quieta
   const onLine=(p,w)=>Math.abs((p.x-w.a.x)*w.n.x+(p.y-w.a.y)*w.n.y)<.8,onSeg=(p,w)=>segDist(p,w.a,w.b).d<.8;
   nodes.forEach(nd=>{nd.refs=nd.refs.filter(({r,k})=>{const n=r.pts.length;for(const j of[k-1,k+1]){if(r.open&&(j<0||j>=n))continue;const q=r.pts[(j+n)%n];for(const wi of nd.walls){const w=W[wi];if(onLine(q,w)&&!(onSeg(q,w)&&onSeg(r.pts[k],w))&&!W.some(z=>onSeg(q,z)&&onSeg(r.pts[k],z)))return false}}return true})});
