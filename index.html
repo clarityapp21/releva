@@ -1604,14 +1604,16 @@ function pickRefAt(w){const T=refTarget(),self=T&&!T.many&&T.st!=='wall'?T.o:nul
   if(best)return best.s;const wh=wallHitInterior(w);return wh?{t:'wall',id:wh.id,i:wh.i}:null}
 function refPickTap(w){const s=pickRefAt(w);if(!s){toast('Tocá justo sobre el elemento o el muro');return}refTo=s;refPick=false;render();renderQC();toast('Listo: ahora las medidas van hasta ese elemento')}
 // saca un punto intermedio de un muro recto (sin otros muros que lleguen ahí): los dos tramos quedan como uno
-function mergeVertex(r,k){const n=r.pts.length;if(n<4)return false;if(r.open&&(k===0||k===n-1))return false;const V=r.pts[k],P=r.pts[(k-1+n)%n],N=r.pts[(k+1)%n],L1=dist(P,V),L2=dist(V,N);if(L1<.5||L2<.5)return false;
-  const cr=((V.x-P.x)*(N.y-V.y)-(V.y-P.y)*(N.x-V.x))/(L1*L2),dt=((V.x-P.x)*(N.x-V.x)+(V.y-P.y)*(N.y-V.y))/(L1*L2);if(Math.abs(cr)>.02||dt<0)return false;
-  const kp=(k-1+n)%n;if((wallThick(r,kp)||0)!==(wallThick(r,k)||0))return false;
-  for(const x of S.rooms){if(x===r)continue;if(x.pts.some(p=>dist(p,V)<1))return false}
-  const ni=j=>j>k?j-1:j;
+function straightAt(x,j){const n=x.pts.length;if(n<4)return null;if(x.open&&(j===0||j===n-1))return null;const V=x.pts[j],P=x.pts[(j-1+n)%n],N=x.pts[(j+1)%n],L1=dist(P,V),L2=dist(V,N);if(L1<.5||L2<.5)return null;
+  const cr=((V.x-P.x)*(N.y-V.y)-(V.y-P.y)*(N.x-V.x))/(L1*L2),dt=((V.x-P.x)*(N.x-V.x)+(V.y-P.y)*(N.y-V.y))/(L1*L2);if(Math.abs(cr)>.02||dt<0)return null;const kp=(j-1+n)%n;if(!x.nowall&&(wallThick(x,kp)||0)!==(wallThick(x,j)||0))return null;return{L1,L2,kp}}
+function dropVertex(r,k,L1,L2,kp){const ni=j=>j>k?j-1:j;
   for(const o of S.openings){if(o.room!==r.id)continue;if(o.seg===k){o.seg=ni(kp);o.pos=Math.round((o.pos+L1)*10)/10}else o.seg=ni(o.seg)}
   for(const m of S.marks){if(m.free||m.room!==r.id||m.i==null)continue;if(m.i===k){m.i=ni(kp);if(!m.from)m.dist+=L1}else{if(m.i===kp&&m.from)m.dist+=L2;m.i=ni(m.i)}}
-  if(r.ws&&r.ws.length>k)r.ws.splice(k,1);r.pts.splice(k,1);return true}
+  if(r.ws&&r.ws.length>k)r.ws.splice(k,1);r.pts.splice(k,1)}
+// saca un punto intermedio de un muro recto: en ese ambiente y en los vecinos que también pasan derecho por ahí. Si a ese punto llega otro muro (una T), no se puede.
+function mergeVertex(r,k){const V=r.pts[k];const L=[];for(const x of S.rooms)x.pts.forEach((p,j)=>{if(dist(p,V)<1)L.push({x,j})});
+  const st=L.map(({x,j})=>({x,j,s:straightAt(x,j)}));if(st.some(q=>!q.s))return false;
+  for(const q of st)dropVertex(q.x,q.j,q.s.L1,q.s.L2,q.s.kp);return true}
 function mergeAt(r,j,end){const n=r.pts.length;return mergeVertex(r,end?(j+1)%n:j)}
 /* ===== unificar muros superpuestos ===== */
 // lleva las puntas de los muros que se pisan con `base` sobre el eje de `base` (quedan como un solo muro compartido)
@@ -1625,7 +1627,11 @@ function unifyWalls(base,others){const{r:r0,i:i0}=base,n0=r0.pts.length,a=r0.pts
   // ambientes que quedaron sin superficie (las tiritas entre los muros superpuestos)
   const before=S.rooms.length;S.rooms=S.rooms.filter(r=>r.pts.length<3||Math.abs(area(r.pts))>=150||r.name);const gone=before-S.rooms.length;if(gone)S.openings=S.openings.filter(o=>getRoom(o.room));
   return{k,gone}}
+function joinCollinear(E){const SG=E.map(e=>[{...e.r.pts[e.i]},{...e.r.pts[(e.i+1)%e.r.pts.length]}]),same=(A,B)=>(dist(A[0],B[0])<1&&dist(A[1],B[1])<1)||(dist(A[0],B[1])<1&&dist(A[1],B[0])<1);let c=0,blocked=0,go=true;
+  while(go){go=false;for(const r of S.rooms){const n=r.pts.length;for(let k=0;k<n&&!go;k++){const P=r.pts[(k-1+n)%n],V=r.pts[k],N=r.pts[(k+1)%n],a=SG.findIndex(z=>same(z,[P,V])),b=SG.findIndex(z=>same(z,[V,N]));if(a<0||b<0)continue;
+    if(mergeVertex(r,k)){SG.splice(Math.max(a,b),1);SG.splice(Math.min(a,b),1);SG.push([{...P},{...N}]);c++;go=true}else blocked++}if(go)break}}return{c,blocked}}
 function unifySel(){const E=msel.length&&mWalls()?wallEntries():sel&&sel.t==='wall'?[{r:getRoom(sel.id),i:sel.i}]:[];if(!E.length||!E[0].r)return;
+  if(E.length>1){const J=joinCollinear(E);if(J.c){commit();sel=null;msel=[];hideQC();renderAll();renderRight();toast(`Listo: los tramos quedaron como un solo muro`);return}if(J.blocked){toast('No se pueden juntar: en ese punto llega otro muro');return}}
   let tot=0,gone=0;if(E.length===1){const W=overlapWalls(E[0].r,E[0].i);if(!W.length){toast('Este muro no se pisa con ningún otro');return}const res=unifyWalls(E[0],W);tot=res.k;gone=res.gone}
   else{const base=E.reduce((m,e)=>wallThick(e.r,e.i)>wallThick(m.r,m.i)||(wallThick(e.r,e.i)===wallThick(m.r,m.i)&&dist(e.r.pts[e.i],e.r.pts[(e.i+1)%e.r.pts.length])>dist(m.r.pts[m.i],m.r.pts[(m.i+1)%m.r.pts.length]))?e:m,E[0]);const W=overlapWalls(base.r,base.i,E.filter(e=>e!==base));if(!W.length){toast('Los muros elegidos no son paralelos ni se pisan');return}const res=unifyWalls(base,W);tot=res.k;gone=res.gone}
   commit();sel=null;msel=[];hideQC();renderAll();renderRight();toast(`Listo: ${tot+1} muros quedaron como uno${gone?` · se borraron ${gone} espacios sin superficie`:''}`)}
@@ -2030,7 +2036,7 @@ function deleteWall(r,i,quiet){const n=r.pts.length,a=r.pts[i],b=r.pts[(i+1)%n],
       // quitar vértices alineados en las uniones
       let P=M;for(let pass=0;pass<2;pass++)P=P.filter((p,k)=>{const pr=P[(k-1+P.length)%P.length],nx=P[(k+1)%P.length];const cr=Math.abs((p.x-pr.x)*(nx.y-p.y)-(p.y-pr.y)*(nx.x-p.x));return!((dist(p,a)<.8||dist(p,b)<.8)&&cr<1&&JSON.stringify(wsOf(pr,p))===JSON.stringify(wsOf(p,nx)))});
       r.pts=P;r.ws=P.map((p,k)=>wsOf(p,P[(k+1)%P.length]));if(!r.name&&two.name)r.name=two.name;S.rooms=S.rooms.filter(x=>x!==two);restoreAttach(cap,[r]);msg='Muro eliminado: los dos espacios quedaron unidos'}
-    else{const P=[],W=[];for(let k=0;k<n;k++){P.push(r.pts[(i+1+k)%n]);W.push(ws((i+1+k)%n))}r.pts=P;r.ws=W;r.open=true;r.nowall=false;restoreAttach(cap,[r]);msg='Muro eliminado: el espacio quedó abierto'}}
+    else{if(!r.ws)r.ws=[];r.ws[i]=Object.assign({},r.ws[i]||{},{none:true});S.openings=S.openings.filter(o=>!(o.room===r.id&&o.seg===i));msg='Muro eliminado: el espacio sigue cerrado y ese lado quedó como borde de piso'}}
   if(quiet)return msg;sel=null;hideQC();commit();renderAll();renderRight();toast(msg)}
 let wallMv=null;
 /* ===== cierre al unir dos muros: busca las caras cerradas que forma el trazo con los muros existentes ===== */
