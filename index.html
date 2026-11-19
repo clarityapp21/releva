@@ -1041,9 +1041,9 @@ function render(){LB=[];
       LBadd(mx,my,vert?12:tw,vert?tw:12,60,`<text x="${mx}" y="${my}" transform="rotate(${ang} ${mx} ${my})" text-anchor="middle" dominant-baseline="central" font-size="${px(9.5)}" fill="${col||'#6b7280'}" stroke="#fbfbfa" stroke-width="${px(3)}" paint-order="stroke">${nf(L/100)}</text>`)};
     const NET=wallNet();
     // tramos de una cota interior: sobre una línea 3 cm adentro de la cara, desde una cara de muro hasta la siguiente (corta donde cruza un muro)
-    const facePieces=(r,a,u,nin,L)=>{const O={x:a.x+nin.x*3,y:a.y+nin.y*3},n=r.pts.length,X=[];
+    const facePieces=(r,a,u,nin,L,ref)=>{if(ref==null)ref=L/2;const O={x:a.x+nin.x*3,y:a.y+nin.y*3},n=r.pts.length,X=[];
       for(let k=0;k<n;k++){const p=r.pts[k],q=r.pts[(k+1)%n],e={x:q.x-p.x,y:q.y-p.y},den=u.x*e.y-u.y*e.x;if(Math.abs(den)<1e-9)continue;const t=((p.x-O.x)*e.y-(p.y-O.y)*e.x)/den,v=((p.x-O.x)*u.y-(p.y-O.y)*u.x)/den;if(v>=-1e-6&&v<1-1e-6)X.push(t)}
-      X.sort((x,y)=>x-y);let c0=0,c1=L;for(let k=0;k+1<X.length;k+=2)if(X[k]<=L/2&&X[k+1]>=L/2){c0=X[k];c1=X[k+1]}
+      X.sort((x,y)=>x-y);let c0=0,c1=L;for(let k=0;k+1<X.length;k+=2)if(X[k]<=ref&&X[k+1]>=ref){c0=X[k];c1=X[k+1]}
       const I=[];for(const w of NET){const ox=O.x-w.a.x,oy=O.y-w.a.y;let lo=-1e9,hi=1e9;const slab=(p0,dp,mn,mx)=>{if(Math.abs(dp)<1e-9){if(p0<mn||p0>mx){lo=1;hi=0}}else{let t1=(mn-p0)/dp,t2=(mx-p0)/dp;if(t1>t2)[t1,t2]=[t2,t1];lo=Math.max(lo,t1);hi=Math.min(hi,t2)}};
         slab(ox*w.u.x+oy*w.u.y,u.x*w.u.x+u.y*w.u.y,0,w.L);slab(ox*w.n.x+oy*w.n.y,u.x*w.n.x+u.y*w.n.y,-w.t/2,w.t/2);if(hi>lo+.1)I.push([lo,hi])}
       I.sort((x,y)=>x[0]-y[0]);const P=[];let s0=c0;for(const[l,h2]of I){if(h2<=s0)continue;if(l>=c1)break;if(l>s0)P.push([s0,Math.min(l,c1)]);s0=Math.max(s0,h2)}if(c1>s0)P.push([s0,c1]);return P.filter(([x,y])=>y-x>=10)};
@@ -1052,12 +1052,16 @@ function render(){LB=[];
     {const F=[];for(const w of NET)for(const sg of[1,-1]){const nn={x:w.n.x*sg,y:w.n.y*sg},m={x:(w.a.x+w.b.x)/2+nn.x*(w.t/2+6),y:(w.a.y+w.b.y)/2+nn.y*(w.t/2+6)};if(CRs.some(x=>pip(m,x.pts)))continue;const ex=w.ext[sg]||[0,0];
         F.push({A:{x:w.a.x+nn.x*w.t/2-w.u.x*ex[0],y:w.a.y+nn.y*w.t/2-w.u.y*ex[0]},B:{x:w.b.x+nn.x*w.t/2+w.u.x*ex[1],y:w.b.y+nn.y*w.t/2+w.u.y*ex[1]},nn})}
       const used=new Set();for(let i=0;i<F.length;i++){if(used.has(i))continue;const f=F[i],base=f.A;let hi=dist(f.A,f.B),lo=0;if(hi<1)continue;const u={x:(f.B.x-f.A.x)/hi,y:(f.B.y-f.A.y)/hi};used.add(i);
-        let ch=true;while(ch){ch=false;for(let j=0;j<F.length;j++){if(used.has(j))continue;const g=F[j];if(g.nn.x*f.nn.x+g.nn.y*f.nn.y<.99)continue;const off=p=>(p.x-base.x)*f.nn.x+(p.y-base.y)*f.nn.y;if(Math.abs(off(g.A))>1||Math.abs(off(g.B))>1)continue;const sA=(g.A.x-base.x)*u.x+(g.A.y-base.y)*u.y,sB=(g.B.x-base.x)*u.x+(g.B.y-base.y)*u.y,g0=Math.min(sA,sB),g1=Math.max(sA,sB);if(g0>hi+1||g1<lo-1)continue;lo=Math.min(lo,g0);hi=Math.max(hi,g1);used.add(j);ch=true}}
-        const P=t=>({x:base.x+u.x*t,y:base.y+u.y*t});dimL(P(lo),P(hi),f.nn.x,f.nn.y,px(16))}}
+        let far=0,ch=true;while(ch){ch=false;for(let j=0;j<F.length;j++){if(used.has(j))continue;const g=F[j];if(g.nn.x*f.nn.x+g.nn.y*f.nn.y<.99)continue;const off=p=>(p.x-base.x)*f.nn.x+(p.y-base.y)*f.nn.y;if(Math.abs(off(g.A))>12||Math.abs(off(g.B))>12)continue;far=Math.max(far,off(g.A),off(g.B));const sA=(g.A.x-base.x)*u.x+(g.A.y-base.y)*u.y,sB=(g.B.x-base.x)*u.x+(g.B.y-base.y)*u.y,g0=Math.min(sA,sB),g1=Math.max(sA,sB);if(g0>hi+1||g1<lo-1)continue;lo=Math.min(lo,g0);hi=Math.max(hi,g1);used.add(j);ch=true}}
+        const P=t=>({x:base.x+u.x*t+f.nn.x*far,y:base.y+u.y*t+f.nn.y*far});dimL(P(lo),P(hi),f.nn.x,f.nn.y,px(16))}}
+    // cotas interiores: desde cada cara de muro que da a un ambiente, de cara a cara (no dependen de cómo esté dibujado el borde del ambiente)
+    {const IK=[];for(const w of NET)for(const sg of[1,-1]){const nn={x:w.n.x*sg,y:w.n.y*sg},a={x:w.a.x+nn.x*w.t/2,y:w.a.y+nn.y*w.t/2};for(const f of[.1,.3,.5,.7,.9]){const m={x:a.x+w.u.x*w.L*f+nn.x*6,y:a.y+w.u.y*w.L*f+nn.y*6},R=CRs.find(x=>pip(m,x.pts));if(!R)continue;
+        for(const[s0,s1]of facePieces(R,a,w.u,nn,w.L,w.L*f)){if(s1<-1||s0>w.L+1)continue;const A={x:a.x+w.u.x*s0,y:a.y+w.u.y*s0},B={x:a.x+w.u.x*s1,y:a.y+w.u.y*s1},c=A.x*nn.x+A.y*nn.y,sa=A.x*w.u.x+A.y*w.u.y,sb=B.x*w.u.x+B.y*w.u.y;
+          if(IK.some(q=>q.nn.x*nn.x+q.nn.y*nn.y>.99&&Math.abs(q.c-c)<12&&Math.abs(q.sa-sa)<6&&Math.abs(q.sb-sb)<6))continue;IK.push({nn,c,sa,sb});dimL(A,B,nn.x,nn.y,px(13))}}}}
     for(const r of S.rooms){const n=r.pts.length,inn=!r.open&&!r.nowall,Q=inn?innerPoly(r):r.pts,sg=area(r.pts)>0?1:-1;
       for(let i=0;i<segN(r);i++){const a=Q[i],b=Q[(i+1)%n],L=dist(a,b);if(L<20)continue;if(!inn){const k=[a,b].map(p=>Math.round(p.x)+':'+Math.round(p.y)).sort().join('|');if(seen.has(k))continue;seen.add(k)}
         const u={x:(b.x-a.x)/L,y:(b.y-a.y)/L};let nx=u.y,ny=-u.x;
-        if(inn){nx=-u.y*sg;ny=u.x*sg;for(const[s0,s1]of facePieces(r,a,u,{x:nx,y:ny},L))dimL({x:a.x+u.x*s0,y:a.y+u.y*s0},{x:a.x+u.x*s1,y:a.y+u.y*s1},nx,ny,px(13));
+        if(inn){
           // lado que da afuera: la cota completa va por afuera
           continue}
         const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},e=wallThick(r,i)/2+6,in1=CRs.some(x=>pip({x:m.x+nx*e,y:m.y+ny*e},x.pts)),in2=CRs.some(x=>pip({x:m.x-nx*e,y:m.y-ny*e},x.pts));
